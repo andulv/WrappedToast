@@ -1,0 +1,16 @@
+@inherits ToastUIEditorCore
+
+@if (LoadAssets)
+{
+    <HeadContent>
+        <link rel="stylesheet" href="_content/WrappedToast/lib/toastui-editor/toastui-editor.min.css" />
+        <link rel="stylesheet" href="_content/WrappedToast/lib/toastui-editor/theme/toastui-editor-dark.min.css" />
+        <script src="_content/WrappedToast/lib/toastui-editor/toastui-editor-all.min.js" defer></script>
+    </HeadContent>
+}
+
+<div @ref="ElementRef" style="@InitialStyle"></div>
+
+@code {
+    protected override string JsModulePath => "./_content/WrappedToast/ToastUIEditorViewer.razor.js";
+}

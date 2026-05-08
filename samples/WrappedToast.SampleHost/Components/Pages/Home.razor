@@ -1,0 +1,121 @@
+﻿@page "/"
+@rendermode InteractiveServer
+
+<PageTitle>WrappedToast — Sample Host</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">WrappedToast Sample Host</MudText>
+
+<MudText Class="mb-4">
+    This page exercises the editor, viewer, <code>WrappedToast</code>, markdown roundtrip,
+    and the bundled TOAST UI Editor (v3.2.2) assets served from
+    <code>/_content/WrappedToast/lib/toastui-editor/</code>.
+    Toggle the dark switch in the app bar to verify the bundled dark theme.
+</MudText>
+
+<MudGrid>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-3 d-flex flex-column" Style="height:380px;">
+            <MudText Typo="Typo.h6">Editor</MudText>
+            <ToastUIEditor @ref="_editor"
+                           InitialStyle="display:block;width:100%;flex:1 1 auto;"
+                           Options="@(new() { ["height"]="100%", ["initialEditType"]="markdown" })" />
+            <MudStack Row="true" Spacing="1" Class="mt-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReadMarkdownAsync">Read markdown</MudButton>
+                <MudText Class="ms-2 align-self-center">Length: @_lastReadLength</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-3" Style="height:380px;overflow:auto;">
+            <MudText Typo="Typo.h6">Viewer</MudText>
+            <ToastUIEditorViewer @ref="_viewer"
+                                 LoadAssets="false"
+                                 InitialStyle="display:block;width:100%;height:300px;"
+                                 Options="@(new() { ["height"]="300px", ["viewer"]="true" })" />
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadSampleIntoViewer">Load sample markdown</MudButton>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-3" Style="height:520px;">
+            <WrappedToast Title="@_wrappedTitle"
+                          Content="@_wrappedContent"
+                          OnSave="OnWrappedSaveAsync"
+                          LoadAssets="false">
+                <ToolbarExtras>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="ResetWrappedSample">
+                        Reset sample
+                    </MudButton>
+                </ToolbarExtras>
+            </WrappedToast>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudAlert Severity="Severity.Info">
+            Last saved (full markdown including front matter):
+            <pre style="white-space:pre-wrap">@_lastSaved</pre>
+        </MudAlert>
+    </MudItem>
+
+</MudGrid>
+
+@code {
+    private ToastUIEditor _editor = null!;
+    private ToastUIEditorViewer _viewer = null!;
+
+    private string _wrappedTitle = "sample.md";
+    private string _wrappedContent = SampleMarkdown;
+    private string _lastSaved = "(nothing saved yet)";
+    private int _lastReadLength;
+
+    private const string SampleMarkdown = """
+        ---
+        title: Sample document
+        author: WrappedToast
+        ---
+
+        # WrappedToast Demo
+
+        This is a *sample* markdown document rendered by the **WrappedToast** component.
+
+        - Bullet one
+        - Bullet two
+
+        ```csharp
+        var x = 1;
+        ```
+        """;
+
+    protected override void OnInitialized()
+    {
+        // Pre-fill the viewer with the same sample on first navigation.
+    }
+
+    private async Task ReadMarkdownAsync()
+    {
+        var md = await _editor.GetMarkdownAsync();
+        _lastReadLength = md.Length;
+    }
+
+    private void LoadSampleIntoViewer()
+    {
+        _viewer.SetMarkdown(SampleMarkdown);
+    }
+
+    private Task OnWrappedSaveAsync(string fullMarkdown)
+    {
+        _lastSaved = fullMarkdown;
+        return Task.CompletedTask;
+    }
+
+    private void ResetWrappedSample()
+    {
+        _wrappedContent = SampleMarkdown;
+        StateHasChanged();
+    }
+}

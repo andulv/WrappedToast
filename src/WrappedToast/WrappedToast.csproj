@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RazorLangVersion>latest</RazorLangVersion>
+    <IsPackable>true</IsPackable>
+
+    <PackageId>WrappedToast</PackageId>
+    <Title>WrappedToast — TOAST UI Editor Wrapper</Title>
+    <Description>Blazor Razor Class Library that wraps the TOAST UI Editor (https://github.com/nhn/tui.editor) v3.2.2. Includes ToastUIEditor, ToastUIEditorViewer, and WrappedToast components with a view/edit toolbar. TOAST UI Editor assets are bundled as static web assets; no CDN is required.</Description>
+    <Authors>WrappedToast contributors</Authors>
+    <Company>WrappedToast contributors</Company>
+    <PackageTags>Blazor;TOAST;UI;Editor;Markdown;Viewer;MudBlazor;Components</PackageTags>
+    <Version>0.1.0-preview.1</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)..\..\..\..\artifacts\packages</PackageOutputPath>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>WrappedToast</RootNamespace>
+
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.6" />
+    <PackageReference Include="MudBlazor" Version="9.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="CHANGELOG.md" Pack="true" PackagePath="" />
+    <None Include="THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,68 @@
+@inherits ComponentBase
+
+<MudStack Spacing="2" AlignItems="AlignItems.Stretch" Justify="Justify.FlexStart" Class="flex-auto">
+    <MudStack Row="true" AlignItems="AlignItems.Stretch" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h6">@Title</MudText>
+        @if (_currentContent != null)
+        {
+            <MudStack Row="true" Spacing="1">
+                @if (_isEditing)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveAsync"
+                               Disabled="_isSaving">
+                        Save
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Cancel"
+                               OnClick="ExitEditMode"
+                               Disabled="_isSaving">
+                        Cancel
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               OnClick="EnterEditMode">
+                        Edit
+                    </MudButton>
+                    @ToolbarExtras
+                }
+            </MudStack>
+        }
+    </MudStack>
+
+    @if (_currentContent?.FrontMatter != null && _currentContent.FrontMatter.Count > 0)
+    {
+        <MudSimpleTable Dense Bordered>
+            <tbody>
+                @foreach (var kvp in _currentContent!.FrontMatter)
+                {
+                    <tr>
+                        <td>@kvp.Key</td>
+                        <td>@kvp.Value</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+
+    <div class="flex-auto" style="flex:1 1 0%;min-width:0;min-height:0;width:100%">
+        <ToastUIEditor @ref="_editor"
+                       LoadAssets="LoadAssets"
+                       InitialStyle="display: none; width:100%; height:100%;"
+                       Options="EditorOptions" />
+        <ToastUIEditorViewer @ref="_viewer"
+                             LoadAssets="false"
+                             InitialStyle="display: block; width:100%; height:100%;"
+                             Options="ViewerOptions" />
+    </div>
+</MudStack>

@@ -1,0 +1,59 @@
+.frontmatter-panels {
+    flex: 0 0 auto;
+}
+
+.frontmatter-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.76rem;
+    line-height: 1.25;
+}
+
+.frontmatter-table td {
+    padding: 0.12rem 0.35rem;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    vertical-align: top;
+}
+
+.frontmatter-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.frontmatter-key {
+    width: 12rem;
+    max-width: 42%;
+    color: var(--mud-palette-text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.frontmatter-table td.frontmatter-key--level-1 {
+    padding-left: 1rem;
+}
+
+.frontmatter-table td.frontmatter-key--level-2 {
+    padding-left: 1.65rem;
+}
+
+.frontmatter-table td.frontmatter-key--level-3 {
+    padding-left: 2.3rem;
+}
+
+.frontmatter-table td.frontmatter-key--level-4 {
+    padding-left: 2.95rem;
+}
+
+.frontmatter-value {
+    color: var(--mud-palette-text-primary);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.frontmatter-section-row .frontmatter-key {
+    color: var(--mud-palette-text-primary);
+    font-weight: 600;
+}
+
+.frontmatter-section-row .frontmatter-value {
+    color: var(--mud-palette-text-secondary);
+}

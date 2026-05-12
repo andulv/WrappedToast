@@ -12,6 +12,9 @@ public partial class WrappedToast
     /// <summary>Optional title rendered in the toolbar.</summary>
     [Parameter] public string Title { get; set; } = "";
 
+    /// <summary>Whether to render <see cref="Title"/> in the toolbar.</summary>
+    [Parameter] public bool ShowTitle { get; set; } = true;
+
     /// <summary>The full markdown content (optionally including <c>---</c> YAML-style front matter).</summary>
     [Parameter] public string Content { get; set; } = "";
 
@@ -124,6 +127,9 @@ public partial class WrappedToast
             ExitEditMode();
         }
     }
+
+    private static string GetFrontMatterKeyClass(int level)
+        => $"frontmatter-key frontmatter-key--level-{Math.Clamp(level, 0, 4)}";
 }
 
 /// <summary>
@@ -139,42 +145,65 @@ public class TextContentWithFrontMatter
             return null;
         }
         var (frontMatter, body) = SplitFrontMatter(fullContent);
-        var dict = new Dictionary<string, string>();
-        if (!string.IsNullOrEmpty(frontMatter))
-        {
-            var lines = frontMatter.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var line in lines)
-            {
-                var parts = line.Split(new[] { ':' }, 2);
-                if (parts.Length == 2)
-                {
-                    dict[parts[0].Trim()] = parts[1].Trim();
-                }
-            }
-        }
+        var rows = ParseFrontMatterRows(frontMatter);
         return new TextContentWithFrontMatter
         {
-            FrontMatter = dict,
+            FrontMatterText = frontMatter,
+            FrontMatterRows = rows,
             Body = body,
         };
     }
 
-    public Dictionary<string, string> FrontMatter { get; init; } = new();
+    public string? FrontMatterText { get; init; }
+    public IReadOnlyList<FrontMatterRow> FrontMatterRows { get; init; } = [];
     public required string Body { get; set; }
 
     public string ToMarkdownWithFrontMatter()
     {
-        var fm = "";
-        if (FrontMatter.Count > 0)
+        if (string.IsNullOrWhiteSpace(FrontMatterText))
         {
-            fm += "---\n";
-            foreach (var kvp in FrontMatter)
-            {
-                fm += $"{kvp.Key}: {kvp.Value}\n";
-            }
-            fm += "---\n";
+            return Body;
         }
-        return fm + Body;
+
+        return $"---\n{FrontMatterText.TrimEnd()}\n---\n{Body}";
+    }
+
+    private static IReadOnlyList<FrontMatterRow> ParseFrontMatterRows(string? frontMatter)
+    {
+        if (string.IsNullOrWhiteSpace(frontMatter))
+        {
+            return [];
+        }
+
+        var rows = new List<FrontMatterRow>();
+        foreach (var rawLine in frontMatter.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n'))
+        {
+            if (string.IsNullOrWhiteSpace(rawLine))
+            {
+                continue;
+            }
+
+            var trimmed = rawLine.Trim();
+            if (trimmed.StartsWith('#') || trimmed == "---")
+            {
+                continue;
+            }
+
+            var indent = rawLine.TakeWhile(char.IsWhiteSpace).Count();
+            var level = Math.Clamp(indent / 2, 0, 4);
+            var separatorIndex = trimmed.IndexOf(':', StringComparison.Ordinal);
+            if (separatorIndex < 0)
+            {
+                rows.Add(new FrontMatterRow(trimmed, string.Empty, level, IsSection: false));
+                continue;
+            }
+
+            var key = trimmed[..separatorIndex].Trim();
+            var value = trimmed[(separatorIndex + 1)..].Trim();
+            rows.Add(new FrontMatterRow(key, value, level, string.IsNullOrEmpty(value)));
+        }
+
+        return rows;
     }
 
     private static (string? frontMatter, string body) SplitFrontMatter(string? content)
@@ -184,24 +213,44 @@ public class TextContentWithFrontMatter
             return (null, content ?? string.Empty);
         }
 
-        if (!content.StartsWith("---", StringComparison.Ordinal))
+        var firstLineEnd = content.IndexOf('\n', StringComparison.Ordinal);
+        if (firstLineEnd < 0)
         {
             return (null, content);
         }
 
-        var endIndex = content.IndexOf("\n---", 3, StringComparison.Ordinal);
-        if (endIndex < 0)
+        var firstLine = content[..firstLineEnd].TrimEnd('\r');
+        if (firstLine != "---")
         {
             return (null, content);
         }
 
-        var fmEnd = endIndex + 4; // length of "\n---"
-        if (fmEnd < content.Length && content[fmEnd] == '\r') fmEnd++;
-        if (fmEnd < content.Length && content[fmEnd] == '\n') fmEnd++;
+        var frontMatterStart = firstLineEnd + 1;
+        var lineStart = frontMatterStart;
+        while (lineStart < content.Length)
+        {
+            var lineEnd = content.IndexOf('\n', lineStart);
+            var markerLineEnd = lineEnd < 0 ? content.Length : lineEnd;
+            var markerLine = content[lineStart..markerLineEnd].TrimEnd('\r');
+            if (markerLine == "---")
+            {
+                var bodyStart = lineEnd < 0 ? content.Length : lineEnd + 1;
+                var frontmatter = content[frontMatterStart..lineStart].TrimEnd('\r', '\n');
+                var body = content[bodyStart..];
 
-        var frontmatter = content[..fmEnd].TrimEnd();
-        var body = content[fmEnd..];
+                return (frontmatter, body);
+            }
 
-        return (frontmatter, body);
+            if (lineEnd < 0)
+            {
+                break;
+            }
+
+            lineStart = lineEnd + 1;
+        }
+
+        return (null, content);
     }
 }
+
+public sealed record FrontMatterRow(string Key, string Value, int Level, bool IsSection);

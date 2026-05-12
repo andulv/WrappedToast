@@ -2,7 +2,14 @@
 
 <MudStack Spacing="2" AlignItems="AlignItems.Stretch" Justify="Justify.FlexStart" Class="flex-auto">
     <MudStack Row="true" AlignItems="AlignItems.Stretch" Justify="Justify.SpaceBetween">
-        <MudText Typo="Typo.h6">@Title</MudText>
+        @if (ShowTitle && !string.IsNullOrWhiteSpace(Title))
+        {
+            <MudText Typo="Typo.h6">@Title</MudText>
+        }
+        else
+        {
+            <span></span>
+        }
         @if (_currentContent != null)
         {
             <MudStack Row="true" Spacing="1">
@@ -40,19 +47,23 @@
         }
     </MudStack>
 
-    @if (_currentContent?.FrontMatter != null && _currentContent.FrontMatter.Count > 0)
+    @if (_currentContent?.FrontMatterRows.Count > 0)
     {
-        <MudSimpleTable Dense Bordered>
-            <tbody>
-                @foreach (var kvp in _currentContent!.FrontMatter)
-                {
-                    <tr>
-                        <td>@kvp.Key</td>
-                        <td>@kvp.Value</td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+        <MudExpansionPanels Dense="true" Elevation="0" Gutters="false" Outlined="true" Class="frontmatter-panels">
+            <MudExpansionPanel Dense="true" Gutters="false" Text="@($"Frontmatter ({_currentContent.FrontMatterRows.Count})")">
+                <table class="frontmatter-table">
+                    <tbody>
+                        @foreach (var row in _currentContent.FrontMatterRows)
+                        {
+                            <tr class="@(row.IsSection ? "frontmatter-section-row" : null)">
+                                <td class="@GetFrontMatterKeyClass(row.Level)">@row.Key</td>
+                                <td class="frontmatter-value">@row.Value</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
     }
 
     <div class="flex-auto" style="flex:1 1 0%;min-width:0;min-height:0;width:100%">

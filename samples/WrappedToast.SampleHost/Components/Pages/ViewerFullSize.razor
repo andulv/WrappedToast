@@ -1,0 +1,63 @@
+﻿@page "/viewer-full-size"
+
+<PageTitle>WrappedToast - Full Height Viewer</PageTitle>
+
+<div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden mud-width-full">
+    <MudPaper Class="pa-3 d-flex flex-column flex-1 overflow-hidden">
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3 flex-none">
+            <div>
+                <MudText Typo="Typo.h5">Full Height Viewer</MudText>
+                <MudText Typo="Typo.body2">
+                    Direct viewer usage inside a bounded application workspace.
+                </MudText>
+            </div>
+            <MudSpacer />
+            <MudSelect T="string"
+                       Label="Sample Document"
+                       Value="_selectedSampleKey"
+                       ValueChanged="OnSampleChanged"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Class="mud-width-full"
+                       Style="max-width:360px;">
+                @foreach (var sample in SampleMarkdownContent.Samples)
+                {
+                    <MudSelectItem T="string" Value="@sample.Key">@sample.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+        <MudText Typo="Typo.caption" Class="mb-3 flex-none">@SelectedSample.Description</MudText>
+        <ToastUIEditorViewer @ref="_viewer"
+                             LoadAssets="true"
+                             InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
+                             Options="@(new() { ["height"]="100%", ["viewer"]="true" })" />
+    </MudPaper>
+</div>
+
+@code {
+    private ToastUIEditorViewer _viewer = null!;
+    private string _selectedSampleKey = SampleMarkdownContent.DefaultKey;
+
+    private SampleMarkdownDefinition SelectedSample => SampleMarkdownContent.GetByKey(_selectedSampleKey);
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            ApplySelectedSample();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void OnSampleChanged(string value)
+    {
+        _selectedSampleKey = value;
+        ApplySelectedSample();
+    }
+
+    private void ApplySelectedSample()
+    {
+        _viewer.SetMarkdown(SelectedSample.Markdown);
+    }
+}

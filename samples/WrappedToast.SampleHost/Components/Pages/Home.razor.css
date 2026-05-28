@@ -1,0 +1,14 @@
+.home-code-block {
+    overflow-x: auto;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    padding: 12px 16px;
+}
+
+.home-code-block pre {
+    margin: 0;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}

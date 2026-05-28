@@ -1,0 +1,84 @@
+﻿@page "/split-full-size"
+
+<PageTitle>WrappedToast - Split Editor And Viewer</PageTitle>
+
+<div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden mud-width-full">
+    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3 flex-none">
+        <div>
+            <MudText Typo="Typo.h5">Split Editor And Viewer</MudText>
+            <MudText Typo="Typo.body2">
+                Full-height split workspace with the editor on one side and the viewer on the other.
+            </MudText>
+        </div>
+        <MudSpacer />
+        <MudSelect T="string"
+                   Label="Sample Document"
+                   Value="_selectedSampleKey"
+                   ValueChanged="OnSampleChanged"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Class="mud-width-full"
+                   Style="max-width:360px;">
+            @foreach (var sample in SampleMarkdownContent.Samples)
+            {
+                <MudSelectItem T="string" Value="@sample.Key">@sample.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </MudStack>
+
+    <MudText Typo="Typo.caption" Class="mb-3 flex-none">@SelectedSample.Description</MudText>
+
+    <MudSplitPanel ResetOnDoubleClick="true"
+                   Class="sample-min-height-0 d-flex flex-1 mud-width-full"
+                   ClassFirstPanel="d-flex"
+                   ClassSecondPanel="d-flex">
+        <FirstPanel>
+            <MudPaper Class="pa-3 d-flex flex-column flex-1 overflow-hidden">
+                <MudText Typo="Typo.h6" Class="mb-3 flex-none">Editor</MudText>
+                <ToastUIEditor @ref="_editor"
+                               InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
+                               Options="@(new() { ["height"]="100%", ["initialEditType"]="markdown" })" />
+            </MudPaper>
+        </FirstPanel>
+        <SecondPanel>
+            <MudPaper Class="pa-3 d-flex flex-column flex-1 overflow-hidden">
+                <MudText Typo="Typo.h6" Class="mb-3 flex-none">Viewer</MudText>
+                <ToastUIEditorViewer @ref="_viewer"
+                                     LoadAssets="false"
+                                     InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
+                                     Options="@(new() { ["height"]="100%", ["viewer"]="true" })" />
+            </MudPaper>
+        </SecondPanel>
+    </MudSplitPanel>
+</div>
+
+@code {
+    private ToastUIEditor _editor = null!;
+    private ToastUIEditorViewer _viewer = null!;
+    private string _selectedSampleKey = SampleMarkdownContent.DefaultKey;
+
+    private SampleMarkdownDefinition SelectedSample => SampleMarkdownContent.GetByKey(_selectedSampleKey);
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            ApplySelectedSample();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void OnSampleChanged(string value)
+    {
+        _selectedSampleKey = value;
+        ApplySelectedSample();
+    }
+
+    private void ApplySelectedSample()
+    {
+        var markdown = SelectedSample.Markdown;
+        _editor.SetMarkdown(markdown);
+        _viewer.SetMarkdown(markdown);
+    }
+}

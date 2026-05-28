@@ -1,0 +1,100 @@
+﻿@page "/dual-sample"
+
+<PageTitle>WrappedToast - Dual Sample</PageTitle>
+
+<div class="sample-min-height-0 d-flex flex-column flex-1 overflow-auto mud-width-full">
+    <MudStack Spacing="1" Class="mb-4 flex-none">
+        <MudText Typo="Typo.h5">Dual Sample</MudText>
+        <MudText Typo="Typo.body2">
+            Side-by-side sample page that exercises the editor, viewer, and <code>WrappedToast</code> wrapper together.
+        </MudText>
+        <MudText Typo="Typo.caption">
+            Uses the bundled TOAST UI assets served from <code>/_content/WrappedToast/lib/toastui-editor/</code>.
+        </MudText>
+    </MudStack>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-3 d-flex flex-column" Style="height:380px;">
+                <MudText Typo="Typo.h6">Editor</MudText>
+                <ToastUIEditor @ref="_editor"
+                               InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
+                               Options="@(new() { ["height"]="100%", ["initialEditType"]="markdown" })" />
+                <MudStack Row="true" Spacing="1" Class="mt-2 flex-none">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReadMarkdownAsync">Read markdown</MudButton>
+                    <MudText Class="ms-2 align-self-center">Length: @_lastReadLength</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-3 d-flex flex-column" Style="height:380px;">
+                <MudText Typo="Typo.h6">Viewer</MudText>
+                <ToastUIEditorViewer @ref="_viewer"
+                                     LoadAssets="false"
+                                     InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
+                                     Options="@(new() { ["height"]="100%", ["viewer"]="true" })" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadSampleIntoViewer" Class="mt-2 flex-none">Load sample markdown</MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudPaper Class="pa-3 d-flex flex-column" Style="height:520px;">
+                <WrappedToast Title="@_wrappedTitle"
+                              Content="@_wrappedContent"
+                              OnSave="OnWrappedSaveAsync"
+                              LoadAssets="false">
+                    <ToolbarExtras>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   OnClick="ResetWrappedSample">
+                            Reset sample
+                        </MudButton>
+                    </ToolbarExtras>
+                </WrappedToast>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Info">
+                Last saved (full markdown including front matter):
+                <pre style="white-space:pre-wrap">@_lastSaved</pre>
+            </MudAlert>
+        </MudItem>
+    </MudGrid>
+</div>
+
+@code {
+    private ToastUIEditor _editor = null!;
+    private ToastUIEditorViewer _viewer = null!;
+
+    private static readonly string DefaultMarkdown = SampleMarkdownContent.GetByKey(SampleMarkdownContent.DefaultKey).Markdown;
+
+    private string _wrappedTitle = "sample.md";
+    private string _wrappedContent = DefaultMarkdown;
+    private string _lastSaved = "(nothing saved yet)";
+    private int _lastReadLength;
+
+    private async Task ReadMarkdownAsync()
+    {
+        var md = await _editor.GetMarkdownAsync();
+        _lastReadLength = md.Length;
+    }
+
+    private void LoadSampleIntoViewer()
+    {
+        _viewer.SetMarkdown(DefaultMarkdown);
+    }
+
+    private Task OnWrappedSaveAsync(string fullMarkdown)
+    {
+        _lastSaved = fullMarkdown;
+        return Task.CompletedTask;
+    }
+
+    private void ResetWrappedSample()
+    {
+        _wrappedContent = DefaultMarkdown;
+        StateHasChanged();
+    }
+}

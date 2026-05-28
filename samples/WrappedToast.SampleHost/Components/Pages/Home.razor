@@ -1,121 +1,84 @@
 ﻿@page "/"
-@rendermode InteractiveServer
 
-<PageTitle>WrappedToast — Sample Host</PageTitle>
+<PageTitle>Home</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">WrappedToast Sample Host</MudText>
+<MudStack Spacing="4" Class="overflow-auto mud-height-full" Style="min-height:0;">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h3" GutterBottom="true">WrappedToast</MudText>
+        <MudText Typo="Typo.body1" GutterBottom="true">
+            WrappedToast is a MudBlazor-friendly markdown editor and viewer wrapper built on TOAST UI Editor,
+            with optional front matter support for application-style editing surfaces.
+        </MudText>
+        <MudText Typo="Typo.body1" GutterBottom="true">
+            This sample host exists to show direct usage patterns for full-height editors and viewers, plus a
+            combined page that exercises the reusable <code>WrappedToast</code> component end to end.
+        </MudText>
+    </MudPaper>
 
-<MudText Class="mb-4">
-    This page exercises the editor, viewer, <code>WrappedToast</code>, markdown roundtrip,
-    and the bundled TOAST UI Editor (v3.2.2) assets served from
-    <code>/_content/WrappedToast/lib/toastui-editor/</code>.
-    Toggle the dark switch in the app bar to verify the bundled dark theme.
-</MudText>
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-6 mud-height-full">
+                <MudText Typo="Typo.h5" GutterBottom="true">Quick Setup</MudText>
+                <MudText Typo="Typo.body2" GutterBottom="true">
+                    Register MudBlazor services in the host application.
+                </MudText>
+                <div class="home-code-block">
+                    <pre><code>builder.Services.AddMudServices();</code></pre>
+                </div>
+                <MudText Typo="Typo.body2" Class="mt-4" GutterBottom="true">
+                    Include the providers in your interactive layout tree.
+                </MudText>
+                <div class="home-code-block">
+                    <pre><code>&lt;MudThemeProvider /&gt;
+&lt;MudPopoverProvider /&gt;
+&lt;MudDialogProvider /&gt;
+&lt;MudSnackbarProvider /&gt;</code></pre>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-6 mud-height-full">
+                <MudText Typo="Typo.h5" GutterBottom="true">Component Usage</MudText>
+                <MudText Typo="Typo.body2" GutterBottom="true">
+                    Render the higher-level component when you want a markdown workspace with save handling.
+                </MudText>
+                <div class="home-code-block">
+                    <pre><code>@@using WrappedToast
 
-<MudGrid>
+&lt;WrappedToast Title="sample.md"
+              Content="@@Markdown"
+              OnSave="OnSaveAsync" /&gt;</code></pre>
+                </div>
+                <MudText Typo="Typo.body2" Class="mt-4" GutterBottom="true">
+                    Or use the lower-level editor/viewer components directly when you only need one surface.
+                </MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 
-    <MudItem xs="12" md="6">
-        <MudPaper Class="pa-3 d-flex flex-column" Style="height:380px;">
-            <MudText Typo="Typo.h6">Editor</MudText>
-            <ToastUIEditor @ref="_editor"
-                           InitialStyle="display:block;width:100%;flex:1 1 auto;"
-                           Options="@(new() { ["height"]="100%", ["initialEditType"]="markdown" })" />
-            <MudStack Row="true" Spacing="1" Class="mt-2">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReadMarkdownAsync">Read markdown</MudButton>
-                <MudText Class="ms-2 align-self-center">Length: @_lastReadLength</MudText>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h5" GutterBottom="true">Sample Pages</MudText>
+        <MudText Typo="Typo.body2" GutterBottom="true">
+            Use these pages to compare how the editor, viewer, and wrapper behave in different layout scenarios.
+        </MudText>
 
-    <MudItem xs="12" md="6">
-        <MudPaper Class="pa-3" Style="height:380px;overflow:auto;">
-            <MudText Typo="Typo.h6">Viewer</MudText>
-            <ToastUIEditorViewer @ref="_viewer"
-                                 LoadAssets="false"
-                                 InitialStyle="display:block;width:100%;height:300px;"
-                                 Options="@(new() { ["height"]="300px", ["viewer"]="true" })" />
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadSampleIntoViewer">Load sample markdown</MudButton>
-        </MudPaper>
-    </MudItem>
-
-    <MudItem xs="12">
-        <MudPaper Class="pa-3" Style="height:520px;">
-            <WrappedToast Title="@_wrappedTitle"
-                          Content="@_wrappedContent"
-                          OnSave="OnWrappedSaveAsync"
-                          LoadAssets="false">
-                <ToolbarExtras>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Default"
-                               StartIcon="@Icons.Material.Filled.Refresh"
-                               OnClick="ResetWrappedSample">
-                        Reset sample
-                    </MudButton>
-                </ToolbarExtras>
-            </WrappedToast>
-        </MudPaper>
-    </MudItem>
-
-    <MudItem xs="12">
-        <MudAlert Severity="Severity.Info">
-            Last saved (full markdown including front matter):
-            <pre style="white-space:pre-wrap">@_lastSaved</pre>
-        </MudAlert>
-    </MudItem>
-
-</MudGrid>
-
-@code {
-    private ToastUIEditor _editor = null!;
-    private ToastUIEditorViewer _viewer = null!;
-
-    private string _wrappedTitle = "sample.md";
-    private string _wrappedContent = SampleMarkdown;
-    private string _lastSaved = "(nothing saved yet)";
-    private int _lastReadLength;
-
-    private const string SampleMarkdown = """
-        ---
-        title: Sample document
-        author: WrappedToast
-        ---
-
-        # WrappedToast Demo
-
-        This is a *sample* markdown document rendered by the **WrappedToast** component.
-
-        - Bullet one
-        - Bullet two
-
-        ```csharp
-        var x = 1;
-        ```
-        """;
-
-    protected override void OnInitialized()
-    {
-        // Pre-fill the viewer with the same sample on first navigation.
-    }
-
-    private async Task ReadMarkdownAsync()
-    {
-        var md = await _editor.GetMarkdownAsync();
-        _lastReadLength = md.Length;
-    }
-
-    private void LoadSampleIntoViewer()
-    {
-        _viewer.SetMarkdown(SampleMarkdown);
-    }
-
-    private Task OnWrappedSaveAsync(string fullMarkdown)
-    {
-        _lastSaved = fullMarkdown;
-        return Task.CompletedTask;
-    }
-
-    private void ResetWrappedSample()
-    {
-        _wrappedContent = SampleMarkdown;
-        StateHasChanged();
-    }
-}
+        <MudStack Spacing="3">
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudLink Href="/dual-sample">Dual Sample</MudLink>
+                <MudText Typo="Typo.body2">Editor, viewer, and WrappedToast together on one page for side-by-side testing.</MudText>
+            </MudPaper>
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudLink Href="/editor-full-size">Full Height Editor</MudLink>
+                <MudText Typo="Typo.body2">Editor only, filling the available application space.</MudText>
+            </MudPaper>
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudLink Href="/viewer-full-size">Full Height Viewer</MudLink>
+                <MudText Typo="Typo.body2">Viewer only, using the same bounded workspace pattern.</MudText>
+            </MudPaper>
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudLink Href="/split-full-size">Split Editor And Viewer</MudLink>
+                <MudText Typo="Typo.body2">Editor and viewer side by side in a full-height split workspace.</MudText>
+            </MudPaper>
+        </MudStack>
+    </MudPaper>
+</MudStack>

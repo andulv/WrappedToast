@@ -1,5 +1,7 @@
-.frontmatter-panels {
-    flex: 0 0 auto;
+.wrapped-toast-shell {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .frontmatter-table {

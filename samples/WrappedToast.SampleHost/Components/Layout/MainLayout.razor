@@ -1,20 +1,27 @@
-﻿@inherits LayoutComponentBase
+﻿@implements IDisposable
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
 <MudThemeProvider IsDarkMode="@_isDark" Theme="@_theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
+<MudLayout Class="sample-layout d-flex flex-column">
     <MudAppBar Elevation="1">
-        <MudText Typo="Typo.h6">WrappedToast — Sample Host</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6">WrappedToast Sample Host - @CurrentPageTitle</MudText>
         <MudSpacer />
         <MudSwitch T="bool" @bind-Value="_isDark" Label="@(_isDark ? "Dark" : "Light")" Color="Color.Primary" />
     </MudAppBar>
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
-            @Body
-        </MudContainer>
+    <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent Class="pt-16 pa-4 d-flex flex-column flex-auto overflow-hidden" Style="min-height:0;">
+        @Body
     </MudMainContent>
 </MudLayout>
 
@@ -26,5 +33,43 @@
 
 @code {
     private bool _isDark;
+    private bool _drawerOpen = true;
     private readonly MudTheme _theme = new();
+
+    private string CurrentPageTitle => GetPageTitle();
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string GetPageTitle()
+    {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/').ToLowerInvariant();
+
+        return relativePath switch
+        {
+            "" => "Home",
+            "dual-sample" => "Dual Sample",
+            "editor-full-size" => "Full Height Editor",
+            "viewer-full-size" => "Full Height Viewer",
+            "split-full-size" => "Split Editor And Viewer",
+            _ => "Sample Host"
+        };
+    }
 }

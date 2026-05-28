@@ -10,7 +10,8 @@ public class TextContentWithFrontMatterTests
         var result = TextContentWithFrontMatter.Parse("just a body");
 
         Assert.NotNull(result);
-        Assert.Empty(result!.FrontMatter);
+        Assert.Null(result!.FrontMatterText);
+        Assert.Empty(result.FrontMatterRows);
         Assert.Equal("just a body", result.Body);
     }
 
@@ -22,8 +23,19 @@ public class TextContentWithFrontMatterTests
         var result = TextContentWithFrontMatter.Parse(content);
 
         Assert.NotNull(result);
-        Assert.Equal("Hello", result!.FrontMatter["title"]);
-        Assert.Equal("tester", result.FrontMatter["author"]);
+        Assert.Equal("title: Hello\nauthor: tester", result!.FrontMatterText);
+        Assert.Collection(
+            result.FrontMatterRows,
+            row =>
+            {
+                Assert.Equal("title", row.Key);
+                Assert.Equal("Hello", row.Value);
+            },
+            row =>
+            {
+                Assert.Equal("author", row.Key);
+                Assert.Equal("tester", row.Value);
+            });
         Assert.Equal("actual body", result.Body);
     }
 
@@ -49,7 +61,8 @@ public class TextContentWithFrontMatterTests
         var result = TextContentWithFrontMatter.Parse(content);
 
         Assert.NotNull(result);
-        Assert.Empty(result!.FrontMatter);
+        Assert.Null(result!.FrontMatterText);
+        Assert.Empty(result.FrontMatterRows);
         Assert.Equal(content, result.Body);
     }
 }

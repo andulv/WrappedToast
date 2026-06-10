@@ -1,34 +1,64 @@
-let viewerInstance = null;
+import {
+    copyPlainTextToClipboard,
+    copyRichTextToClipboard,
+    disposeToastUiInstance,
+    getToastUiHtml,
+    getToastUiInstance,
+    initializeToastUiInstance,
+    setToastUiElementStyle
+} from './toastui-loader.js';
 
-export function initialize(viewerElement, options) {
-    if (viewerInstance)
-        throw new Error("Viewer instance already exists. Dispose it before initializing a new one.");
-    if (!viewerElement)
-        throw new Error("viewerElement is required for initialization.");
+const viewerInstances = new WeakMap();
+const viewerMarkdown = new WeakMap();
 
-    options = options || {
+export async function initialize(viewerElement, options) {
+    const resolvedOptions = {
         height: "100%",
+        initialEditType: 'wysiwyg',
         viewer: true,
+        ...(options ?? {})
     };
-    options.el = viewerElement;
-    viewerInstance = toastui.Editor.factory(options);
+
+    resolvedOptions.el = viewerElement;
+
+    await initializeToastUiInstance(
+        viewerElement,
+        viewerInstances,
+        'viewer',
+        resolvedOptions,
+        (instanceOptions) => new globalThis.toastui.Editor.factory(instanceOptions),
+        () => viewerMarkdown.set(viewerElement, '')
+    );
+}
+
+export function getMarkdown(viewerElement) {
+    return viewerMarkdown.get(viewerElement) ?? '';
+}
+
+export function getHTML(viewerElement) {
+    return getToastUiHtml(
+        viewerElement,
+        getToastUiInstance(viewerElement, viewerInstances, 'viewer')
+    );
 }
 
 export function setMarkdown(viewerElement, markdown) {
-    viewerInstance.setMarkdown(markdown);
+    viewerMarkdown.set(viewerElement, markdown);
+    getToastUiInstance(viewerElement, viewerInstances, 'viewer').setMarkdown(markdown);
+}
+
+export async function copyMarkdownToClipboard(viewerElement) {
+    await copyPlainTextToClipboard(getMarkdown(viewerElement));
+}
+
+export async function copyHtmlToClipboard(viewerElement) {
+    await copyRichTextToClipboard(getHTML(viewerElement), getMarkdown(viewerElement));
 }
 
 export function setElementStyle(viewerElement, styles) {
-    for (const property in styles) {
-        if (Object.prototype.hasOwnProperty.call(styles, property)) {
-            viewerElement.style[property] = styles[property];
-        }
-    }
+    setToastUiElementStyle(viewerElement, styles);
 }
 
 export function dispose(viewerElement) {
-    if (viewerInstance) {
-        viewerInstance.destroy();
-        viewerInstance = null;
-    }
+    disposeToastUiInstance(viewerElement, viewerInstances, () => viewerMarkdown.delete(viewerElement));
 }

@@ -19,7 +19,7 @@
                 <MudText Typo="Typo.h6">Editor</MudText>
                 <ToastUIEditor @ref="_editor"
                                InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
-                               Options="@(new() { ["height"]="100%", ["initialEditType"]="markdown" })" />
+                               Options="@(new() { ["height"]="100%", ["initialEditType"]="wysiwyg" })" />
                 <MudStack Row="true" Spacing="1" Class="mt-2 flex-none">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReadMarkdownAsync">Read markdown</MudButton>
                     <MudText Class="ms-2 align-self-center">Length: @_lastReadLength</MudText>
@@ -31,7 +31,6 @@
             <MudPaper Class="pa-3 d-flex flex-column" Style="height:380px;">
                 <MudText Typo="Typo.h6">Viewer</MudText>
                 <ToastUIEditorViewer @ref="_viewer"
-                                     LoadAssets="false"
                                      InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
                                      Options="@(new() { ["height"]="100%", ["viewer"]="true" })" />
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadSampleIntoViewer" Class="mt-2 flex-none">Load sample markdown</MudButton>
@@ -42,8 +41,7 @@
             <MudPaper Class="pa-3 d-flex flex-column" Style="height:520px;">
                 <WrappedToast Title="@_wrappedTitle"
                               Content="@_wrappedContent"
-                              OnSave="OnWrappedSaveAsync"
-                              LoadAssets="false">
+                              OnSave="OnWrappedSaveAsync">
                     <ToolbarExtras>
                         <MudButton Variant="Variant.Outlined" Color="Color.Default"
                                    StartIcon="@Icons.Material.Filled.Refresh"

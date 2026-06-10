@@ -37,14 +37,13 @@
                 <MudText Typo="Typo.h6" Class="mb-3 flex-none">Editor</MudText>
                 <ToastUIEditor @ref="_editor"
                                InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
-                               Options="@(new() { ["height"]="100%", ["initialEditType"]="markdown" })" />
+                               Options="@(new() { ["height"]="100%", ["initialEditType"]="wysiwyg" })" />
             </MudPaper>
         </FirstPanel>
         <SecondPanel>
             <MudPaper Class="pa-3 d-flex flex-column flex-1 overflow-hidden">
                 <MudText Typo="Typo.h6" Class="mb-3 flex-none">Viewer</MudText>
                 <ToastUIEditorViewer @ref="_viewer"
-                                     LoadAssets="false"
                                      InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
                                      Options="@(new() { ["height"]="100%", ["viewer"]="true" })" />
             </MudPaper>

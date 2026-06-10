@@ -33,7 +33,7 @@ A higher-level component that combines viewer/editor toggling with an Edit / Sav
 
 TOAST UI Editor assets are vendored at `wwwroot/lib/toastui-editor/` and served at `/_content/CatHerder.Components.ToastEditor/lib/toastui-editor/...`.
 
-The components inject the required `<link>` and `<script>` tags themselves via `<HeadContent>` (per-page) — no host-side wiring is required. Hosts that prefer to load the assets globally can suppress the per-component `<HeadContent>` by passing `LoadAssets="false"`.
+The components inject the required `<link>` and `<script>` tags themselves via `<HeadContent>` (per-page) — no host-side wiring is required.
 
 ## License and attribution
 

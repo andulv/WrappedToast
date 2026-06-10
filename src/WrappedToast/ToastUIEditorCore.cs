@@ -17,14 +17,6 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
     /// <summary>Options bag forwarded to the TOAST UI Editor / Viewer constructor as a plain JS object.</summary>
     [Parameter] public Dictionary<string, string>? Options { get; set; }
 
-    /// <summary>
-    /// When <c>true</c> (the default) the component emits a <c>HeadContent</c> block that
-    /// loads the bundled TOAST UI Editor static assets from
-    /// <c>_content/WrappedToast/lib/toastui-editor/...</c>. Set to <c>false</c>
-    /// when the host already loads the TOAST UI assets globally (e.g. via App.razor).
-    /// </summary>
-    [Parameter] public bool LoadAssets { get; set; } = true;
-
     protected ElementReference ElementRef;
     protected IJSObjectReference? _module;
     private string? _pendingMarkdown;
@@ -35,16 +27,8 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
     {
         if (!firstRender) return;
 
-        try
-        {
-            _module = await JS.InvokeAsync<IJSObjectReference>("import", JsModulePath);
-            await _module.InvokeVoidAsync("initialize", new object?[] { ElementRef, Options });
-        }
-        catch (JSException)
-        {
-            // Initialization failed (e.g. TOAST UI runtime not yet loaded). Caller can retry by
-            // setting markdown again once the page reaches a stable state.
-        }
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", JsModulePath);
+        await _module.InvokeVoidAsync("initialize", new object?[] { ElementRef, Options });
 
         if (_pendingMarkdown != null)
         {
@@ -62,6 +46,39 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
             return;
         }
         _module.InvokeVoidAsync("setMarkdown", new object?[] { ElementRef, markdown });
+    }
+
+    /// <summary>Get the current HTML body from the editor or viewer.</summary>
+    public virtual async Task<string> GetHtmlAsync()
+    {
+        if (_module is null)
+        {
+            return string.Empty;
+        }
+
+        return await _module.InvokeAsync<string>("getHTML", new object?[] { ElementRef });
+    }
+
+    /// <summary>Copy the current markdown body to the clipboard on the client.</summary>
+    public virtual async Task CopyMarkdownToClipboardAsync()
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        await _module.InvokeVoidAsync("copyMarkdownToClipboard", new object?[] { ElementRef });
+    }
+
+    /// <summary>Copy the current HTML body to the clipboard on the client.</summary>
+    public virtual async Task CopyHtmlToClipboardAsync()
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        await _module.InvokeVoidAsync("copyHtmlToClipboard", new object?[] { ElementRef });
     }
 
     /// <summary>Set a single inline CSS property on the root element.</summary>

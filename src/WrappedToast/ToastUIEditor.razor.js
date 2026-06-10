@@ -1,37 +1,60 @@
-let editorInstance = null;
+import {
+    copyPlainTextToClipboard,
+    copyRichTextToClipboard,
+    disposeToastUiInstance,
+    getToastUiHtml,
+    getToastUiInstance,
+    initializeToastUiInstance,
+    setToastUiElementStyle
+} from './toastui-loader.js';
 
-export function initialize(editorElement, options) {
-    if (editorInstance)
-        throw new Error("Editor instance already exists. Dispose it before initializing a new one.");
-    if (!editorElement)
-        throw new Error("editorElement is required for initialization.");
+const editorInstances = new WeakMap();
 
-    options = options || {
+export async function initialize(editorElement, options) {
+    const resolvedOptions = {
         height: "100%",
+        initialEditType: 'wysiwyg',
+        ...(options ?? {})
     };
-    options.el = editorElement;
-    editorInstance = new toastui.Editor(options);
+
+    resolvedOptions.el = editorElement;
+
+    await initializeToastUiInstance(
+        editorElement,
+        editorInstances,
+        'editor',
+        resolvedOptions,
+        (instanceOptions) => new globalThis.toastui.Editor(instanceOptions)
+    );
 }
 
 export function getMarkdown(editorElement) {
-    return editorInstance.getMarkdown();
+    return getToastUiInstance(editorElement, editorInstances, 'editor').getMarkdown();
+}
+
+export function getHTML(editorElement) {
+    return getToastUiHtml(
+        editorElement,
+        getToastUiInstance(editorElement, editorInstances, 'editor')
+    );
 }
 
 export function setMarkdown(editorElement, markdown) {
-    editorInstance.setMarkdown(markdown);
+    getToastUiInstance(editorElement, editorInstances, 'editor').setMarkdown(markdown);
+}
+
+export async function copyMarkdownToClipboard(editorElement) {
+    await copyPlainTextToClipboard(getMarkdown(editorElement));
+}
+
+export async function copyHtmlToClipboard(editorElement) {
+    await copyRichTextToClipboard(getHTML(editorElement), getMarkdown(editorElement));
 }
 
 export function setElementStyle(editorElement, styles) {
-    for (const property in styles) {
-        if (Object.prototype.hasOwnProperty.call(styles, property)) {
-            editorElement.style[property] = styles[property];
-        }
-    }
+    setToastUiElementStyle(editorElement, styles);
 }
 
 export function dispose(editorElement) {
-    if (editorInstance) {
-        editorInstance.destroy();
-        editorInstance = null;
-    }
+    disposeToastUiInstance(editorElement, editorInstances);
 }

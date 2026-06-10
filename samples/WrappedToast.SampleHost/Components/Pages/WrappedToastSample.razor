@@ -1,0 +1,80 @@
+@page "/wrappedtoast-sample"
+
+<PageTitle>WrappedToast - WrappedToast Sample</PageTitle>
+
+<div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden mud-width-full">
+    <MudPaper Class="pa-3 d-flex flex-column flex-1 overflow-hidden">
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3 flex-none">
+            <div>
+                <MudText Typo="Typo.h5">WrappedToast Sample</MudText>
+                <MudText Typo="Typo.body2">
+                    Dedicated sample page for the high-level WrappedToast component.
+                </MudText>
+            </div>
+            <MudSpacer />
+            <MudSelect T="string"
+                       Label="Sample Document"
+                       Value="_selectedSampleKey"
+                       ValueChanged="OnSampleChanged"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Class="mud-width-full"
+                       Style="max-width:360px;">
+                @foreach (var sample in SampleMarkdownContent.Samples)
+                {
+                    <MudSelectItem T="string" Value="@sample.Key">@sample.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+
+        <MudText Typo="Typo.caption" Class="mb-3 flex-none">@SelectedSample.Description</MudText>
+
+        <div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden">
+            <WrappedToast Title="@_wrappedTitle"
+                          Content="@_wrappedContent"
+                          OnSave="OnWrappedSaveAsync">
+                <ToolbarExtras>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="ResetWrappedSample">
+                        Reset sample
+                    </MudButton>
+                </ToolbarExtras>
+            </WrappedToast>
+        </div>
+
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3 flex-none">
+            Last saved (full markdown including front matter):
+            <pre style="white-space:pre-wrap">@_lastSaved</pre>
+        </MudAlert>
+    </MudPaper>
+</div>
+
+@code {
+    private string _selectedSampleKey = SampleMarkdownContent.DefaultKey;
+    private string _wrappedTitle = "sample.md";
+    private string _wrappedContent = SampleMarkdownContent.GetByKey(SampleMarkdownContent.DefaultKey).Markdown;
+    private string _lastSaved = "(nothing saved yet)";
+
+    private SampleMarkdownDefinition SelectedSample => SampleMarkdownContent.GetByKey(_selectedSampleKey);
+
+    private void OnSampleChanged(string value)
+    {
+        _selectedSampleKey = value;
+        _wrappedContent = SelectedSample.Markdown;
+        _wrappedTitle = $"{SelectedSample.Key}.md";
+    }
+
+    private Task OnWrappedSaveAsync(string fullMarkdown)
+    {
+        _lastSaved = fullMarkdown;
+        return Task.CompletedTask;
+    }
+
+    private void ResetWrappedSample()
+    {
+        _wrappedContent = SelectedSample.Markdown;
+        StateHasChanged();
+    }
+}

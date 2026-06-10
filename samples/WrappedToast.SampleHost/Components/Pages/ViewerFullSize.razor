@@ -28,7 +28,6 @@
         </MudStack>
         <MudText Typo="Typo.caption" Class="mb-3 flex-none">@SelectedSample.Description</MudText>
         <ToastUIEditorViewer @ref="_viewer"
-                             LoadAssets="true"
                              InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
                              Options="@(new() { ["height"]="100%", ["viewer"]="true" })" />
     </MudPaper>

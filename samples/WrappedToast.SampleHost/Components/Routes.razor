@@ -1,6 +1,25 @@
-﻿<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+﻿@inject IHostEnvironment HostEnvironment
+
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        <ErrorBoundary>
+            <ChildContent>
+                <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </ChildContent>
+            <ErrorContent Context="ex">
+                <LayoutView Layout="typeof(Layout.MainLayout)">
+                    <div class="pa-4 d-flex flex-column" style="gap:12px;">
+                        <h1>Unhandled UI Error</h1>
+                        <p>The interactive UI encountered an unhandled exception.</p>
+
+                        @if (HostEnvironment.IsDevelopment())
+                        {
+                            <pre style="white-space: pre-wrap; overflow:auto;">@ex.ToString()</pre>
+                        }
+                    </div>
+                </LayoutView>
+            </ErrorContent>
+        </ErrorBoundary>
     </Found>
 </Router>

@@ -4,6 +4,10 @@
     overflow: hidden;
 }
 
+.wrapped-toast-copy-group {
+    align-self: center;
+}
+
 .frontmatter-table {
     width: 100%;
     border-collapse: collapse;

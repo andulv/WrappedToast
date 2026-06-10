@@ -1,7 +1,7 @@
 @inherits ComponentBase
 
 <div class="wrapped-toast-shell d-flex flex-column flex-1 gap-2 mud-width-full">
-    <MudStack Row="true" AlignItems="AlignItems.Stretch" Justify="Justify.SpaceBetween" Class="flex-none">
+    <MudStack Row="true" AlignItems="AlignItems.Stretch" Justify="Justify.SpaceBetween" Class="flex-none wrapped-toast-toolbar">
         @if (ShowTitle && !string.IsNullOrWhiteSpace(Title))
         {
             <MudText Typo="Typo.h6">@Title</MudText>
@@ -13,6 +13,37 @@
         @if (_currentContent != null)
         {
             <MudStack Row="true" Spacing="1">
+                <MudButtonGroup Variant="Variant.Outlined"
+                            Color="Color.Primary"
+                                Size="Size.Small"
+                            Class="wrapped-toast-copy-group"
+                                DropShadow="false">
+                    <MudButton StartIcon="@Icons.Material.Filled.ContentCopy"
+                               OnClick="CopyMarkdownAsync"
+                           Style="text-transform:none;"
+                               Disabled="_isSaving">
+                       Copy markdown
+                    </MudButton>
+                    <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"
+                             Dense="true"
+                         Variant="Variant.Text"
+                         Color="Color.Primary"
+                             Size="Size.Small"
+                         Class="wrapped-toast-copy-menu"
+                         Style="align-self:auto;"
+                             Disabled="_isSaving"
+                             AriaLabel="Copy options"
+                             AnchorOrigin="Origin.BottomRight"
+                             TransformOrigin="Origin.TopRight">
+                        <MudMenuItem Icon="@Icons.Material.Filled.ContentCopy"
+                                     Label="Copy as markdown"
+                                     OnClick="CopyMarkdownAsync" />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Html"
+                                     Label="Copy as HTML"
+                                     OnClick="CopyHtmlAsync" />
+                    </MudMenu>
+                </MudButtonGroup>
+
                 @if (_isEditing)
                 {
                     <MudButton Variant="Variant.Filled"
@@ -68,11 +99,9 @@
 
     <div class="flex-1 overflow-hidden mud-width-full" style="min-width:0;min-height:0;">
         <ToastUIEditor @ref="_editor"
-                       LoadAssets="LoadAssets"
                        InitialStyle="display: none; width:100%; height:100%; overflow:auto;"
                        Options="EditorOptions" />
         <ToastUIEditorViewer @ref="_viewer"
-                             LoadAssets="false"
                              InitialStyle="display: block; width:100%; height:100%; overflow:auto;"
                              Options="ViewerOptions" />
     </div>

@@ -22,18 +22,17 @@ public partial class WrappedToast
     [Parameter] public EventCallback<string> OnSave { get; set; }
 
     /// <summary>
+    /// Initial TOAST UI editor mode for the embedded editor surface.
+    /// Supported values match TOAST UI Editor, such as <c>wysiwyg</c> and <c>markdown</c>.
+    /// </summary>
+    [Parameter] public string InitialEditType { get; set; } = "wysiwyg";
+
+    /// <summary>
     /// Optional render fragment placed in the toolbar next to the Edit button (only shown when not editing).
     /// Use this to inject host-specific buttons such as "Print" or "Share" without coupling
     /// the package to the host's navigation.
     /// </summary>
     [Parameter] public RenderFragment? ToolbarExtras { get; set; }
-
-    /// <summary>
-    /// When <c>true</c> (default) the component asks the inner editor to render the bundled
-    /// TOAST UI assets via <c>HeadContent</c>. Set to <c>false</c> if the host already
-    /// loads the TOAST UI assets globally.
-    /// </summary>
-    [Parameter] public bool LoadAssets { get; set; } = true;
 
     private ToastUIEditor _editor = null!;
     private ToastUIEditorViewer _viewer = null!;
@@ -60,12 +59,16 @@ public partial class WrappedToast
         {
             ["height"] = "100%",
             ["frontMatter"] = "true",
-            ["initialEditType"] = "markdown",
+            ["initialEditType"] = "wysiwyg",
         };
     }
 
     protected override void OnParametersSet()
     {
+        EditorOptions["initialEditType"] = string.IsNullOrWhiteSpace(InitialEditType)
+            ? "wysiwyg"
+            : InitialEditType;
+
         _currentContent = TextContentWithFrontMatter.Parse(Content);
         _currentContent_updated = true;
     }
@@ -126,6 +129,28 @@ public partial class WrappedToast
             _isSaving = false;
             ExitEditMode();
         }
+    }
+
+    private async Task CopyMarkdownAsync()
+    {
+        if (_isEditing)
+        {
+            await _editor.CopyMarkdownToClipboardAsync();
+            return;
+        }
+
+        await _viewer.CopyMarkdownToClipboardAsync();
+    }
+
+    private async Task CopyHtmlAsync()
+    {
+        if (_isEditing)
+        {
+            await _editor.CopyHtmlToClipboardAsync();
+            return;
+        }
+
+        await _viewer.CopyHtmlToClipboardAsync();
     }
 
     private static string GetFrontMatterKeyClass(int level)

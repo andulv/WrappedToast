@@ -34,6 +34,12 @@ public partial class WrappedToast
     /// </summary>
     [Parameter] public RenderFragment? ToolbarExtras { get; set; }
 
+    /// <summary>Base href used by the viewer to resolve relative markdown links.</summary>
+    [Parameter] public string? ViewerLinkBaseHref { get; set; }
+
+    /// <summary>Base href used by the viewer to resolve relative markdown image sources.</summary>
+    [Parameter] public string? ViewerImageBaseHref { get; set; }
+
     private ToastUIEditor _editor = null!;
     private ToastUIEditorViewer _viewer = null!;
     private FrontMatterPanel _frontMatterPanel = null!;
@@ -75,6 +81,24 @@ public partial class WrappedToast
         EditorOptions["initialEditType"] = string.IsNullOrWhiteSpace(InitialEditType)
             ? "wysiwyg"
             : InitialEditType;
+
+        if (string.IsNullOrWhiteSpace(ViewerLinkBaseHref))
+        {
+            ViewerOptions.Remove("linkBaseHref");
+        }
+        else
+        {
+            ViewerOptions["linkBaseHref"] = ViewerLinkBaseHref;
+        }
+
+        if (string.IsNullOrWhiteSpace(ViewerImageBaseHref))
+        {
+            ViewerOptions.Remove("imageBaseHref");
+        }
+        else
+        {
+            ViewerOptions["imageBaseHref"] = ViewerImageBaseHref;
+        }
 
         _currentContent = TextContentWithFrontMatter.Parse(Content);
         _currentContent_updated = true;
@@ -248,6 +272,8 @@ public partial class WrappedToast
             {
                 _editor.SetMarkdown(_currentContent?.Body ?? string.Empty);
             }
+            _viewer.SetLinkBaseHref(ViewerLinkBaseHref);
+            _viewer.SetImageBaseHref(ViewerImageBaseHref);
             _viewer.SetMarkdown(_currentContent?.Body ?? string.Empty);
             _currentContent_updated = false;
         }

@@ -11,4 +11,87 @@
         if (_module is null) return string.Empty;
         return await _module.InvokeAsync<string>("getMarkdown", new object?[] { ElementRef });
     }
+
+    /// <summary>Insert text at the current cursor position.</summary>
+    public async Task InsertTextAsync(string text)
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync("insertText", new object?[] { ElementRef, text });
+    }
+
+    /// <summary>
+    /// Replace text in the given range. Positions are <c>[lineIndex, cursorOffset]</c>
+    /// in markdown mode or <c>[offset]</c> in WYSIWYG mode.
+    /// </summary>
+    public async Task ReplaceSelectionAsync(string text, int[] start, int[] end)
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync("replaceSelection", new object?[] { ElementRef, text, start, end });
+    }
+
+    /// <summary>
+    /// Get text in the given range. Positions are <c>[lineIndex, cursorOffset]</c>
+    /// in markdown mode or <c>[offset]</c> in WYSIWYG mode.
+    /// </summary>
+    public async Task<string> GetSelectedTextAsync(int[] start, int[] end)
+    {
+        if (_module is null) return string.Empty;
+        return await _module.InvokeAsync<string>("getSelectedText", new object?[] { ElementRef, start, end });
+    }
+
+    /// <summary>
+    /// Get the current selection range.
+    /// In markdown mode: <c>[[line, col], [line, col]]</c>.
+    /// In WYSIWYG mode: <c>[startOffset, endOffset]</c>.
+    /// </summary>
+    public async Task<int[][]> GetSelectionAsync()
+    {
+        if (_module is null) return [];
+        return await _module.InvokeAsync<int[][]>("getSelection", new object?[] { ElementRef });
+    }
+
+    /// <summary>
+    /// Set the selection range. Positions are <c>[lineIndex, cursorOffset]</c>
+    /// in markdown mode or <c>[offset]</c> in WYSIWYG mode.
+    /// </summary>
+    public async Task SetSelectionAsync(int[] start, int[] end)
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync("setSelection", new object?[] { ElementRef, start, end });
+    }
+
+    /// <summary>Check whether the editor is in markdown mode.</summary>
+    public async Task<bool> IsMarkdownModeAsync()
+    {
+        if (_module is null) return false;
+        return await _module.InvokeAsync<bool>("isMarkdownMode", new object?[] { ElementRef });
+    }
+
+    /// <summary>Switch the editor to the given mode (e.g. "markdown" or "wysiwyg").</summary>
+    public async Task ChangeModeAsync(string mode)
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync("changeMode", new object?[] { ElementRef, mode });
+    }
+
+    /// <summary>Focus the editor.</summary>
+    public async Task FocusAsync()
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync("focus", new object?[] { ElementRef });
+    }
+
+    /// <summary>Move the cursor to the end of the document.</summary>
+    public async Task MoveCursorToEndAsync()
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync("moveCursorToEnd", new object?[] { ElementRef });
+    }
+
+    /// <summary>Move the cursor to the start of the document.</summary>
+    public async Task MoveCursorToStartAsync()
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync("moveCursorToStart", new object?[] { ElementRef });
+    }
 }

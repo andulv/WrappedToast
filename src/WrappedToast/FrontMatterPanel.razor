@@ -1,0 +1,90 @@
+@inherits ComponentBase
+
+@if (FrontMatterRows.Count > 0)
+{
+    <MudExpansionPanels Dense="true" Elevation="0" Gutters="false" Outlined="true" Class="flex-none">
+        <MudExpansionPanel Dense="true" Gutters="false" Text="@($"Frontmatter ({FrontMatterRows.Count})")">
+            @if (!IsEditing)
+            {
+                <table class="frontmatter-table">
+                    <tbody>
+                        @foreach (var row in FrontMatterRows)
+                        {
+                            <tr class="@(row.IsSection ? "frontmatter-section-row" : null)">
+                                <td class="@GetFrontMatterKeyClass(row.Level)">@row.Key</td>
+                                <td class="frontmatter-value">@row.Value</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <table class="frontmatter-table frontmatter-table-edit">
+                    <thead>
+                        <tr>
+                            <th class="frontmatter-edit-header">Key</th>
+                            <th class="frontmatter-edit-header">Value</th>
+                            <th class="frontmatter-edit-header" style="width:40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < _editRows.Count; i++)
+                        {
+                            var index = i;
+                            var row = _editRows[index];
+                            if (_deletedIndices.Contains(index))
+                            {
+                                continue;
+                            }
+                            <tr class="@(row.IsSection ? "frontmatter-section-row" : null)">
+                                <td class="@GetFrontMatterKeyClass(row.Level)">
+                                    @if (row.IsSection)
+                                    {
+                                        <MudText Typo="Typo.subtitle2" Class="frontmatter-section-label">@row.Key</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudTextField T="string" Value="@row.Key"
+                                                      ValueChanged="(v) => OnKeyChanged(index, v)"
+                                                      Margin="Margin.Dense" Variant="Variant.Outlined"
+                                                      Class="frontmatter-edit-field" />
+                                    }
+                                </td>
+                                <td class="frontmatter-value">
+                                    @if (!row.IsSection)
+                                    {
+                                        <MudTextField T="string" Value="@row.Value"
+                                                      ValueChanged="(v) => OnValueChanged(index, v)"
+                                                      Margin="Margin.Dense" Variant="Variant.Outlined"
+                                                      Class="frontmatter-edit-field" />
+                                    }
+                                </td>
+                                <td class="frontmatter-edit-actions">
+                                    @if (_deletedIndices.Contains(index))
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Restore" Size="Size.Small"
+                                                       Color="Color.Info" OnClick="() => RestoreRow(index)" />
+                                    }
+                                    else
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                       Color="Color.Error" OnClick="() => DeleteRow(index)" />
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        <tr>
+                            <td colspan="3" class="frontmatter-add-row">
+                                <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="AddRow" Class="frontmatter-add-button">
+                                    Add row
+                                </MudButton>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            }
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+}

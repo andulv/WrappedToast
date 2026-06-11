@@ -80,21 +80,9 @@
 
     @if (_currentContent?.FrontMatterRows.Count > 0)
     {
-        <MudExpansionPanels Dense="true" Elevation="0" Gutters="false" Outlined="true" Class="flex-none">
-            <MudExpansionPanel Dense="true" Gutters="false" Text="@($"Frontmatter ({_currentContent.FrontMatterRows.Count})")">
-                <table class="frontmatter-table">
-                    <tbody>
-                        @foreach (var row in _currentContent.FrontMatterRows)
-                        {
-                            <tr class="@(row.IsSection ? "frontmatter-section-row" : null)">
-                                <td class="@GetFrontMatterKeyClass(row.Level)">@row.Key</td>
-                                <td class="frontmatter-value">@row.Value</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </MudExpansionPanel>
-        </MudExpansionPanels>
+        <FrontMatterPanel @ref="_frontMatterPanel"
+                          FrontMatterRows="@_currentContent.FrontMatterRows"
+                          IsEditing="@_isEditingFrontMatter" />
     }
 
     <div class="flex-1 overflow-hidden mud-width-full" style="min-width:0;min-height:0;">

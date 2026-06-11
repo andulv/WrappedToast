@@ -5,13 +5,6 @@
 <div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden mud-width-full">
     <MudPaper Class="pa-3 d-flex flex-column flex-1 overflow-hidden">
         <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3 flex-none">
-            <div>
-                <MudText Typo="Typo.h5">WrappedToast Sample</MudText>
-                <MudText Typo="Typo.body2">
-                    Dedicated sample page for the high-level WrappedToast component.
-                </MudText>
-            </div>
-            <MudSpacer />
             <MudSelect T="string"
                        Label="Sample Document"
                        Value="_selectedSampleKey"
@@ -26,8 +19,6 @@
                 }
             </MudSelect>
         </MudStack>
-
-        <MudText Typo="Typo.caption" Class="mb-3 flex-none">@SelectedSample.Description</MudText>
 
         <div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden">
             <WrappedToast Title="@_wrappedTitle"

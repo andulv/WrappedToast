@@ -1,0 +1,131 @@
+.frontmatter-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.76rem;
+    line-height: 1.25;
+}
+
+.frontmatter-table td {
+    padding: 0.12rem 0.35rem;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    vertical-align: top;
+}
+
+.frontmatter-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.frontmatter-key {
+    width: 12rem;
+    max-width: 42%;
+    color: var(--mud-palette-text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.frontmatter-table td.frontmatter-key--level-1 {
+    padding-left: 1rem;
+}
+
+.frontmatter-table td.frontmatter-key--level-2 {
+    padding-left: 1.65rem;
+}
+
+.frontmatter-table td.frontmatter-key--level-3 {
+    padding-left: 2.3rem;
+}
+
+.frontmatter-table td.frontmatter-key--level-4 {
+    padding-left: 2.95rem;
+}
+
+.frontmatter-value {
+    color: var(--mud-palette-text-primary);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.frontmatter-section-row .frontmatter-key {
+    color: var(--mud-palette-text-primary);
+    font-weight: 600;
+}
+
+.frontmatter-section-row .frontmatter-value {
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Edit mode styles */
+.frontmatter-table-edit thead th {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    text-transform: uppercase;
+    padding: 0.25rem 0.35rem;
+    border-bottom: 2px solid var(--mud-palette-lines-default);
+}
+
+.frontmatter-table-edit td {
+    padding: 1px 0.35rem;
+}
+
+::deep .frontmatter-edit-field {
+    width: 100%;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+::deep .frontmatter-edit-field.mud-input-control {
+    font-size: 0.76rem;
+}
+
+::deep .frontmatter-edit-field .mud-input {
+    font-size: 0.76rem;
+    min-height: 0;
+}
+
+::deep .frontmatter-edit-field .mud-input-outlined {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+::deep .frontmatter-edit-field input.mud-input-root {
+    font-size: 0.76rem;
+    padding: 2px 6px;
+    min-height: 22px;
+    line-height: 1.25;
+}
+
+::deep .frontmatter-edit-field .mud-input-outlined-border {
+    top: -3px;
+    bottom: -3px;
+}
+
+::deep .frontmatter-section-label {
+    font-size: 0.76rem;
+}
+
+.frontmatter-edit-actions {
+    text-align: center;
+    vertical-align: middle;
+    padding: 1px 0;
+}
+
+::deep .frontmatter-add-button {
+    font-size: 0.76rem;
+}
+
+.frontmatter-add-row td {
+    padding: 0.5rem 0.35rem;
+    border-top: 1px dashed var(--mud-palette-lines-default);
+}
+
+.frontmatter-add-button {
+    text-transform: none;
+    font-size: 0.76rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.frontmatter-section-label {
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}

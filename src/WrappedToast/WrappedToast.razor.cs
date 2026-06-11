@@ -36,10 +36,14 @@ public partial class WrappedToast
 
     private ToastUIEditor _editor = null!;
     private ToastUIEditorViewer _viewer = null!;
+    private FrontMatterPanel _frontMatterPanel = null!;
     private bool _isEditing;
     private bool _isSaving;
     private TextContentWithFrontMatter? _currentContent;
     private bool _currentContent_updated;
+
+    // Frontmatter editing state
+    private bool _isEditingFrontMatter;
 
     /// <summary>Default options forwarded to <see cref="ToastUIEditorViewer"/>.</summary>
     public Dictionary<string, string> ViewerOptions { get; }
@@ -256,6 +260,12 @@ public partial class WrappedToast
         _editor.SetMarkdown(_currentContent?.Body ?? string.Empty);
         _editor.SetStyle("display", "block");
         _viewer.SetStyle("display", "none");
+
+        // If frontmatter exists, enter frontmatter edit mode
+        if (_currentContent?.FrontMatterRows.Count > 0)
+        {
+            EnterFrontMatterEditMode();
+        }
     }
 
     private void ExitEditMode()
@@ -263,6 +273,7 @@ public partial class WrappedToast
         _isEditing = false;
         _editor.SetStyle("display", "none");
         _viewer.SetStyle("display", "block");
+        ExitFrontMatterEditMode();
     }
 
     private async Task SaveAsync()
@@ -276,6 +287,15 @@ public partial class WrappedToast
         try
         {
             _currentContent.Body = await _editor.GetMarkdownAsync();
+
+            // If frontmatter was being edited, pull the edited rows from the panel
+            if (_isEditingFrontMatter)
+            {
+                var editedRows = _frontMatterPanel.GetEditedRows();
+                _currentContent = TextContentWithFrontMatter.FromParts(editedRows, _currentContent.Body);
+                ExitFrontMatterEditMode();
+            }
+
             await OnSave.InvokeAsync(_currentContent.ToMarkdownWithFrontMatter());
             _viewer.SetMarkdown(_currentContent.Body);
         }
@@ -308,129 +328,17 @@ public partial class WrappedToast
         await _viewer.CopyHtmlToClipboardAsync();
     }
 
-    private static string GetFrontMatterKeyClass(int level)
-        => $"frontmatter-key frontmatter-key--level-{Math.Clamp(level, 0, 4)}";
-}
+    // ── Frontmatter editing ────────────────────────────────────────────
 
-/// <summary>
-/// Helper that splits a markdown string into optional <c>---</c> YAML-style front matter and a body,
-/// and recombines them.
-/// </summary>
-public class TextContentWithFrontMatter
-{
-    public static TextContentWithFrontMatter? Parse(string fullContent)
+    private void EnterFrontMatterEditMode()
     {
-        if (fullContent == null)
-        {
-            return null;
-        }
-        var (frontMatter, body) = SplitFrontMatter(fullContent);
-        var rows = ParseFrontMatterRows(frontMatter);
-        return new TextContentWithFrontMatter
-        {
-            FrontMatterText = frontMatter,
-            FrontMatterRows = rows,
-            Body = body,
-        };
+        _isEditingFrontMatter = true;
+        // FrontMatterPanel clones rows internally when IsEditing becomes true
     }
 
-    public string? FrontMatterText { get; init; }
-    public IReadOnlyList<FrontMatterRow> FrontMatterRows { get; init; } = [];
-    public required string Body { get; set; }
-
-    public string ToMarkdownWithFrontMatter()
+    private void ExitFrontMatterEditMode()
     {
-        if (string.IsNullOrWhiteSpace(FrontMatterText))
-        {
-            return Body;
-        }
-
-        return $"---\n{FrontMatterText.TrimEnd()}\n---\n{Body}";
-    }
-
-    private static IReadOnlyList<FrontMatterRow> ParseFrontMatterRows(string? frontMatter)
-    {
-        if (string.IsNullOrWhiteSpace(frontMatter))
-        {
-            return [];
-        }
-
-        var rows = new List<FrontMatterRow>();
-        foreach (var rawLine in frontMatter.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n'))
-        {
-            if (string.IsNullOrWhiteSpace(rawLine))
-            {
-                continue;
-            }
-
-            var trimmed = rawLine.Trim();
-            if (trimmed.StartsWith('#') || trimmed == "---")
-            {
-                continue;
-            }
-
-            var indent = rawLine.TakeWhile(char.IsWhiteSpace).Count();
-            var level = Math.Clamp(indent / 2, 0, 4);
-            var separatorIndex = trimmed.IndexOf(':', StringComparison.Ordinal);
-            if (separatorIndex < 0)
-            {
-                rows.Add(new FrontMatterRow(trimmed, string.Empty, level, IsSection: false));
-                continue;
-            }
-
-            var key = trimmed[..separatorIndex].Trim();
-            var value = trimmed[(separatorIndex + 1)..].Trim();
-            rows.Add(new FrontMatterRow(key, value, level, string.IsNullOrEmpty(value)));
-        }
-
-        return rows;
-    }
-
-    private static (string? frontMatter, string body) SplitFrontMatter(string? content)
-    {
-        if (string.IsNullOrEmpty(content))
-        {
-            return (null, content ?? string.Empty);
-        }
-
-        var firstLineEnd = content.IndexOf('\n', StringComparison.Ordinal);
-        if (firstLineEnd < 0)
-        {
-            return (null, content);
-        }
-
-        var firstLine = content[..firstLineEnd].TrimEnd('\r');
-        if (firstLine != "---")
-        {
-            return (null, content);
-        }
-
-        var frontMatterStart = firstLineEnd + 1;
-        var lineStart = frontMatterStart;
-        while (lineStart < content.Length)
-        {
-            var lineEnd = content.IndexOf('\n', lineStart);
-            var markerLineEnd = lineEnd < 0 ? content.Length : lineEnd;
-            var markerLine = content[lineStart..markerLineEnd].TrimEnd('\r');
-            if (markerLine == "---")
-            {
-                var bodyStart = lineEnd < 0 ? content.Length : lineEnd + 1;
-                var frontmatter = content[frontMatterStart..lineStart].TrimEnd('\r', '\n');
-                var body = content[bodyStart..];
-
-                return (frontmatter, body);
-            }
-
-            if (lineEnd < 0)
-            {
-                break;
-            }
-
-            lineStart = lineEnd + 1;
-        }
-
-        return (null, content);
+        _isEditingFrontMatter = false;
+        // FrontMatterPanel clears its edit buffer when IsEditing becomes false
     }
 }
-
-public sealed record FrontMatterRow(string Key, string Value, int Level, bool IsSection);

@@ -1,0 +1,87 @@
+@page "/editor"
+
+<PageTitle>Editor Sample</PageTitle>
+
+<div class="sample-stack">
+    <section>
+        <h1>Editor sample</h1>
+        <p>Thin wrapper around the native TOAST UI editor.</p>
+    </section>
+
+    <div class="button-row">
+        <button class="btn btn-primary" @onclick="ResetSample">Reset sample</button>
+        <button class="btn btn-outline-secondary" @onclick="ReadMarkdownAsync">Read markdown</button>
+        <button class="btn btn-outline-secondary" @onclick="ReadHtmlAsync">Read HTML</button>
+    </div>
+
+    <div class="editor-surface">
+        <ToastUIEditor @ref="_editor"
+                       InitialStyle="display:block;width:100%;height:100%;"
+                       Options="_editorOptions" />
+    </div>
+
+    <div class="sample-grid">
+        <section class="sample-panel">
+            <h2>Markdown</h2>
+            <pre>@_lastMarkdown</pre>
+        </section>
+
+        <section class="sample-panel">
+            <h2>HTML</h2>
+            <pre>@_lastHtml</pre>
+        </section>
+    </div>
+</div>
+
+@code {
+    private static readonly Dictionary<string, string> _editorOptions = new()
+    {
+        ["height"] = "100%",
+        ["initialEditType"] = "wysiwyg"
+    };
+
+    private const string SampleMarkdown = """
+# WrappedToast editor sample
+
+This page uses the thin `ToastUIEditor` wrapper.
+
+- Native editor surface
+- No MudBlazor
+- Markdown and HTML readback
+
+```csharp
+Console.WriteLine("Toast UI");
+```
+""";
+
+    private ToastUIEditor _editor = null!;
+    private string _lastMarkdown = SampleMarkdown;
+    private string _lastHtml = "<p>Use the buttons above to read the current HTML.</p>";
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _editor.SetMarkdown(SampleMarkdown);
+    }
+
+    private void ResetSample()
+    {
+        _editor.SetMarkdown(SampleMarkdown);
+        _lastMarkdown = SampleMarkdown;
+        _lastHtml = "<p>Use the buttons above to read the current HTML.</p>";
+    }
+
+    private async Task ReadMarkdownAsync()
+    {
+        _lastMarkdown = await _editor.GetMarkdownAsync();
+    }
+
+    private async Task ReadHtmlAsync()
+    {
+        _lastHtml = await _editor.GetHtmlAsync();
+    }
+}

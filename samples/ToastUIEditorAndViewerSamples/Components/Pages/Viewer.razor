@@ -1,0 +1,97 @@
+@page "/viewer"
+
+<PageTitle>Viewer Sample</PageTitle>
+
+<div class="sample-stack">
+    <section>
+        <h1>Viewer sample</h1>
+        <p>Thin wrapper around the native TOAST UI viewer.</p>
+    </section>
+
+    <div class="button-row">
+        <button class="btn btn-primary" @onclick="ApplyMarkdown">Apply markdown</button>
+        <button class="btn btn-outline-secondary" @onclick="LoadDefaultSample">Load default sample</button>
+        <button class="btn btn-outline-secondary" @onclick="LoadTableSample">Load table sample</button>
+    </div>
+
+    <div class="sample-grid">
+        <section class="sample-panel">
+            <h2>Markdown input</h2>
+            <textarea class="sample-textarea" @bind="_markdown"></textarea>
+        </section>
+
+        <section class="sample-panel viewer-panel">
+            <h2>Viewer output</h2>
+            <div class="viewer-surface">
+                <ToastUIEditorViewer @ref="_viewer"
+                                     InitialStyle="display:block;width:100%;height:100%;"
+                                     Options="_viewerOptions" />
+            </div>
+        </section>
+    </div>
+</div>
+
+@code {
+    private static readonly Dictionary<string, string> _viewerOptions = new()
+    {
+        ["height"] = "100%",
+        ["viewer"] = "true"
+    };
+
+    private const string DefaultMarkdown = """
+# WrappedToast viewer sample
+
+The viewer renders markdown directly.
+
+> This page uses `ToastUIEditorViewer`.
+
+1. Edit the markdown
+2. Click apply
+3. Inspect the output
+""";
+
+    private const string TableMarkdown = """
+## Table sample
+
+| Name | Role |
+| --- | --- |
+| WrappedToast | Thin Blazor wrapper |
+| Toast UI | Native editor and viewer |
+
+### Notes
+
+- Viewer wrapper only
+- Markdown in, HTML rendered out
+- No wrapper-specific transformation
+""";
+
+    private ToastUIEditorViewer _viewer = null!;
+    private string _markdown = DefaultMarkdown;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _viewer.SetMarkdown(_markdown);
+    }
+
+    private void ApplyMarkdown()
+    {
+        _viewer.SetMarkdown(_markdown);
+    }
+
+    private void LoadDefaultSample()
+    {
+        _markdown = DefaultMarkdown;
+        _viewer.SetMarkdown(_markdown);
+    }
+
+    private void LoadTableSample()
+    {
+        _markdown = TableMarkdown;
+        _viewer.SetMarkdown(_markdown);
+    }
+}

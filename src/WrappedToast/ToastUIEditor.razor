@@ -5,18 +5,40 @@
 @code {
     protected override string JsModulePath => "./_content/WrappedToast/ToastUIEditor.razor.js";
 
+    /// <summary>Set the markdown body shown by the editor.</summary>
+    public void SetMarkdown(string markdown, bool cursorToEnd = true)
+    {
+        SetMarkdownCore(markdown, cursorToEnd);
+    }
+
+    /// <summary>Set the markdown body shown by the editor.</summary>
+    public async Task SetMarkdownAsync(string markdown, bool cursorToEnd = true)
+    {
+        await SetMarkdownCoreAsync(markdown, cursorToEnd);
+    }
+
+    /// <summary>Set the current HTML body in the editor.</summary>
+    public async Task SetHtmlAsync(string html, bool cursorToEnd = true)
+    {
+        await InvokeVoidMethodAsync("setHTML", html, cursorToEnd);
+    }
+
+    /// <summary>Get the current HTML body from the editor.</summary>
+    public async Task<string> GetHtmlAsync()
+    {
+        return await InvokeStringMethodAsync("getHTML");
+    }
+
     /// <summary>Get the current markdown text from the editor.</summary>
     public async Task<string> GetMarkdownAsync()
     {
-        if (_module is null) return string.Empty;
-        return await _module.InvokeAsync<string>("getMarkdown", new object?[] { ElementRef });
+        return await InvokeStringMethodAsync("getMarkdown");
     }
 
     /// <summary>Insert text at the current cursor position.</summary>
     public async Task InsertTextAsync(string text)
     {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync("insertText", new object?[] { ElementRef, text });
+        await InvokeVoidMethodAsync("insertText", text);
     }
 
     /// <summary>
@@ -25,8 +47,13 @@
     /// </summary>
     public async Task ReplaceSelectionAsync(string text, int[] start, int[] end)
     {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync("replaceSelection", new object?[] { ElementRef, text, start, end });
+        await InvokeVoidMethodAsync("replaceSelection", text, start, end);
+    }
+
+    /// <summary>Replace text in the given WYSIWYG offset range.</summary>
+    public async Task ReplaceSelectionAsync(string text, int start, int end)
+    {
+        await InvokeVoidMethodAsync("replaceSelection", text, start, end);
     }
 
     /// <summary>
@@ -35,8 +62,13 @@
     /// </summary>
     public async Task<string> GetSelectedTextAsync(int[] start, int[] end)
     {
-        if (_module is null) return string.Empty;
-        return await _module.InvokeAsync<string>("getSelectedText", new object?[] { ElementRef, start, end });
+        return await InvokeStringMethodAsync("getSelectedText", start, end);
+    }
+
+    /// <summary>Get text in the given WYSIWYG offset range.</summary>
+    public async Task<string> GetSelectedTextAsync(int start, int end)
+    {
+        return await InvokeStringMethodAsync("getSelectedText", start, end);
     }
 
     /// <summary>
@@ -44,10 +76,9 @@
     /// In markdown mode: <c>[[line, col], [line, col]]</c>.
     /// In WYSIWYG mode: <c>[startOffset, endOffset]</c>.
     /// </summary>
-    public async Task<int[][]> GetSelectionAsync()
+    public async Task<System.Text.Json.JsonElement> GetSelectionAsync()
     {
-        if (_module is null) return [];
-        return await _module.InvokeAsync<int[][]>("getSelection", new object?[] { ElementRef });
+        return await InvokeJsonMethodAsync("getSelection");
     }
 
     /// <summary>
@@ -56,42 +87,237 @@
     /// </summary>
     public async Task SetSelectionAsync(int[] start, int[] end)
     {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync("setSelection", new object?[] { ElementRef, start, end });
+        await InvokeVoidMethodAsync("setSelection", start, end);
+    }
+
+    /// <summary>Set the selection range using WYSIWYG offsets.</summary>
+    public async Task SetSelectionAsync(int start, int end)
+    {
+        await InvokeVoidMethodAsync("setSelection", start, end);
+    }
+
+    /// <summary>Check whether the editor is wrapping a viewer instance.</summary>
+    public async Task<bool> IsViewerAsync()
+    {
+        return await InvokeBoolMethodAsync("isViewer");
     }
 
     /// <summary>Check whether the editor is in markdown mode.</summary>
     public async Task<bool> IsMarkdownModeAsync()
     {
-        if (_module is null) return false;
-        return await _module.InvokeAsync<bool>("isMarkdownMode", new object?[] { ElementRef });
+        return await InvokeBoolMethodAsync("isMarkdownMode");
+    }
+
+    /// <summary>Check whether the editor is in WYSIWYG mode.</summary>
+    public async Task<bool> IsWysiwygModeAsync()
+    {
+        return await InvokeBoolMethodAsync("isWysiwygMode");
     }
 
     /// <summary>Switch the editor to the given mode (e.g. "markdown" or "wysiwyg").</summary>
-    public async Task ChangeModeAsync(string mode)
+    public async Task ChangeModeAsync(string mode, bool withoutFocus = false)
     {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync("changeMode", new object?[] { ElementRef, mode });
+        await InvokeVoidMethodAsync("changeMode", mode, withoutFocus);
+    }
+
+    /// <summary>Switch the markdown preview style (e.g. "tab" or "vertical").</summary>
+    public async Task ChangePreviewStyleAsync(string style)
+    {
+        await InvokeVoidMethodAsync("changePreviewStyle", style);
+    }
+
+    /// <summary>Remove focus from the editor.</summary>
+    public async Task BlurAsync()
+    {
+        await InvokeVoidMethodAsync("blur");
+    }
+
+    /// <summary>Convert a markdown-mode range to match the requested editor mode.</summary>
+    public async Task<System.Text.Json.JsonElement> ConvertPositionToMatchEditorModeAsync(int[] start, int[]? end = null, string? mode = null)
+    {
+        return await InvokeJsonMethodAsync("convertPosToMatchEditorMode", start, end, mode);
+    }
+
+    /// <summary>Convert a WYSIWYG offset range to match the requested editor mode.</summary>
+    public async Task<System.Text.Json.JsonElement> ConvertPositionToMatchEditorModeAsync(int start, int? end = null, string? mode = null)
+    {
+        return await InvokeJsonMethodAsync("convertPosToMatchEditorMode", start, end, mode);
+    }
+
+    /// <summary>Delete text in the given range.</summary>
+    public async Task DeleteSelectionAsync(int[] start, int[] end)
+    {
+        await InvokeVoidMethodAsync("deleteSelection", start, end);
+    }
+
+    /// <summary>Delete text in the given WYSIWYG offset range.</summary>
+    public async Task DeleteSelectionAsync(int start, int end)
+    {
+        await InvokeVoidMethodAsync("deleteSelection", start, end);
+    }
+
+    /// <summary>Execute a named TOAST UI command.</summary>
+    public async Task ExecAsync(string name)
+    {
+        await InvokeVoidMethodAsync("exec", name);
+    }
+
+    /// <summary>Execute a named TOAST UI command with a payload.</summary>
+    public async Task ExecAsync(string name, object payload)
+    {
+        await InvokeVoidMethodAsync("exec", name, payload);
+    }
+
+    /// <summary>Get the current markdown preview style.</summary>
+    public async Task<string> GetCurrentPreviewStyleAsync()
+    {
+        return await InvokeStringMethodAsync("getCurrentPreviewStyle");
+    }
+
+    /// <summary>Get the editor height.</summary>
+    public async Task<string> GetHeightAsync()
+    {
+        return await InvokeStringMethodAsync("getHeight");
+    }
+
+    /// <summary>Get the editor minimum content height.</summary>
+    public async Task<string> GetMinHeightAsync()
+    {
+        return await InvokeStringMethodAsync("getMinHeight");
+    }
+
+    /// <summary>Get range information for the node at the current selection.</summary>
+    public async Task<System.Text.Json.JsonElement> GetRangeInfoOfNodeAsync()
+    {
+        return await InvokeJsonMethodAsync("getRangeInfoOfNode");
+    }
+
+    /// <summary>Get range information for the node at a markdown position.</summary>
+    public async Task<System.Text.Json.JsonElement> GetRangeInfoOfNodeAsync(int[] position)
+    {
+        return await InvokeJsonMethodAsync("getRangeInfoOfNode", position);
+    }
+
+    /// <summary>Get range information for the node at a WYSIWYG offset.</summary>
+    public async Task<System.Text.Json.JsonElement> GetRangeInfoOfNodeAsync(int position)
+    {
+        return await InvokeJsonMethodAsync("getRangeInfoOfNode", position);
+    }
+
+    /// <summary>Get the scroll position of the editor container.</summary>
+    public async Task<double> GetScrollTopAsync()
+    {
+        return await InvokeDoubleMethodAsync("getScrollTop");
+    }
+
+    /// <summary>Hide the editor.</summary>
+    public async Task HideAsync()
+    {
+        await InvokeVoidMethodAsync("hide");
     }
 
     /// <summary>Focus the editor.</summary>
     public async Task FocusAsync()
     {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync("focus", new object?[] { ElementRef });
+        await InvokeVoidMethodAsync("focus");
     }
 
     /// <summary>Move the cursor to the end of the document.</summary>
-    public async Task MoveCursorToEndAsync()
+    public async Task MoveCursorToEndAsync(bool focus = true)
     {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync("moveCursorToEnd", new object?[] { ElementRef });
+        await InvokeVoidMethodAsync("moveCursorToEnd", focus);
     }
 
     /// <summary>Move the cursor to the start of the document.</summary>
-    public async Task MoveCursorToStartAsync()
+    public async Task MoveCursorToStartAsync(bool focus = true)
     {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync("moveCursorToStart", new object?[] { ElementRef });
+        await InvokeVoidMethodAsync("moveCursorToStart", focus);
+    }
+
+    /// <summary>Unbind handlers for the given event type.</summary>
+    public async Task OffAsync(string type)
+    {
+        await InvokeVoidMethodAsync("off", type);
+    }
+
+    /// <summary>Remove a hook by type.</summary>
+    public async Task RemoveHookAsync(string type)
+    {
+        await InvokeVoidMethodAsync("removeHook", type);
+    }
+
+    /// <summary>Replace a range with text that can be rendered by widget rules.</summary>
+    public async Task ReplaceWithWidgetAsync(int[] start, int[] end, string text)
+    {
+        await InvokeVoidMethodAsync("replaceWithWidget", start, end, text);
+    }
+
+    /// <summary>Replace a WYSIWYG offset range with text that can be rendered by widget rules.</summary>
+    public async Task ReplaceWithWidgetAsync(int start, int end, string text)
+    {
+        await InvokeVoidMethodAsync("replaceWithWidget", start, end, text);
+    }
+
+    /// <summary>Reset the editor.</summary>
+    public async Task ResetAsync()
+    {
+        await InvokeVoidMethodAsync("reset");
+    }
+
+    /// <summary>Set the editor height.</summary>
+    public async Task SetHeightAsync(string height)
+    {
+        await InvokeVoidMethodAsync("setHeight", height);
+    }
+
+    /// <summary>Set the editor minimum content height.</summary>
+    public async Task SetMinHeightAsync(string minHeight)
+    {
+        await InvokeVoidMethodAsync("setMinHeight", minHeight);
+    }
+
+    /// <summary>Set the placeholder on all editor surfaces.</summary>
+    public async Task SetPlaceholderAsync(string placeholder)
+    {
+        await InvokeVoidMethodAsync("setPlaceholder", placeholder);
+    }
+
+    /// <summary>Set the scroll position of the editor container.</summary>
+    public async Task SetScrollTopAsync(double value)
+    {
+        await InvokeVoidMethodAsync("setScrollTop", value);
+    }
+
+    /// <summary>Show the editor.</summary>
+    public async Task ShowAsync()
+    {
+        await InvokeVoidMethodAsync("show");
+    }
+
+    /// <summary>Insert a toolbar item using the native TOAST UI toolbar item shape.</summary>
+    public async Task InsertToolbarItemAsync(object indexInfo, object item)
+    {
+        await InvokeVoidMethodAsync("insertToolbarItem", indexInfo, item);
+    }
+
+    /// <summary>Remove a toolbar item by name.</summary>
+    public async Task RemoveToolbarItemAsync(string itemName)
+    {
+        await InvokeVoidMethodAsync("removeToolbarItem", itemName);
+    }
+
+    internal async Task<int[][]> GetMarkdownSelectionAsync()
+    {
+        var selection = await GetSelectionAsync();
+        if (selection.ValueKind != System.Text.Json.JsonValueKind.Array || selection.GetArrayLength() != 2)
+        {
+            return [];
+        }
+
+        return
+        [
+            selection[0].EnumerateArray().Select(value => value.GetInt32()).ToArray(),
+            selection[1].EnumerateArray().Select(value => value.GetInt32()).ToArray()
+        ];
     }
 }

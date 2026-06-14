@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using System.Text.Json;
 
 namespace WrappedToast;
 
 /// <summary>
 /// Shared base class for <see cref="ToastUIEditor"/> and <see cref="ToastUIEditorViewer"/>.
-/// Handles JS module loading, options forwarding, pending markdown, style updates, and disposal.
+/// Handles JS module loading, options forwarding, pending markdown, helper interop, and disposal.
 /// </summary>
 public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
 {
@@ -19,7 +20,9 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
 
     protected ElementReference ElementRef;
     protected IJSObjectReference? _module;
+    protected IJSObjectReference? _instance;
     private string? _pendingMarkdown;
+    private bool _pendingMarkdownCursorToEnd = true;
 
     protected virtual string JsModulePath => string.Empty;
 
@@ -28,88 +31,128 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
         if (!firstRender) return;
 
         _module = await JS.InvokeAsync<IJSObjectReference>("import", JsModulePath);
-        await _module.InvokeVoidAsync("initialize", new object?[] { ElementRef, Options });
+        _instance = await _module.InvokeAsync<IJSObjectReference>("initialize", new object?[] { ElementRef, Options });
 
         if (_pendingMarkdown != null)
         {
-            SetMarkdown(_pendingMarkdown);
+            await SetMarkdownCoreAsync(_pendingMarkdown, _pendingMarkdownCursorToEnd);
             _pendingMarkdown = null;
+            _pendingMarkdownCursorToEnd = true;
         }
     }
 
-    /// <summary>Set the markdown body shown by the editor or viewer. Buffers until JS init completes.</summary>
-    public virtual void SetMarkdown(string markdown)
+    protected void SetMarkdownCore(string markdown, bool cursorToEnd = true)
     {
-        if (_module == null)
+        _ = SetMarkdownCoreAsync(markdown, cursorToEnd);
+    }
+
+    protected async Task SetMarkdownCoreAsync(string markdown, bool cursorToEnd = true)
+    {
+        if (_instance == null)
         {
             _pendingMarkdown = markdown;
+            _pendingMarkdownCursorToEnd = cursorToEnd;
             return;
         }
-        _module.InvokeVoidAsync("setMarkdown", new object?[] { ElementRef, markdown });
+
+        await _instance.InvokeVoidAsync("setMarkdown", new object?[] { markdown, cursorToEnd });
     }
 
-    /// <summary>Get the current HTML body from the editor or viewer.</summary>
-    public virtual async Task<string> GetHtmlAsync()
+    protected async Task<string> InvokeStringMethodAsync(string identifier, params object?[] args)
     {
-        if (_module is null)
+        if (_instance is null)
         {
             return string.Empty;
         }
 
-        return await _module.InvokeAsync<string>("getHTML", new object?[] { ElementRef });
+        return await _instance.InvokeAsync<string>(identifier, args);
     }
 
-    /// <summary>Copy the current markdown body to the clipboard on the client.</summary>
-    public virtual async Task CopyMarkdownToClipboardAsync()
+    protected async Task<bool> InvokeBoolMethodAsync(string identifier, bool defaultValue = false, params object?[] args)
     {
-        if (_module is null)
+        if (_instance is null)
+        {
+            return defaultValue;
+        }
+
+        return await _instance.InvokeAsync<bool>(identifier, args);
+    }
+
+    protected async Task<double> InvokeDoubleMethodAsync(string identifier, double defaultValue = 0, params object?[] args)
+    {
+        if (_instance is null)
+        {
+            return defaultValue;
+        }
+
+        return await _instance.InvokeAsync<double>(identifier, args);
+    }
+
+    protected async Task<JsonElement> InvokeJsonMethodAsync(string identifier, params object?[] args)
+    {
+        if (_instance is null)
+        {
+            return default;
+        }
+
+        return await _instance.InvokeAsync<JsonElement>(identifier, args);
+    }
+
+    protected async Task InvokeVoidMethodAsync(string identifier, params object?[] args)
+    {
+        if (_instance is null)
         {
             return;
         }
 
-        await _module.InvokeVoidAsync("copyMarkdownToClipboard", new object?[] { ElementRef });
+        await _instance.InvokeVoidAsync(identifier, args);
     }
 
-    /// <summary>Copy the current HTML body to the clipboard on the client.</summary>
-    public virtual async Task CopyHtmlToClipboardAsync()
+    internal void SetElementStyle(string property, string value)
     {
-        if (_module is null)
-        {
-            return;
-        }
-
-        await _module.InvokeVoidAsync("copyHtmlToClipboard", new object?[] { ElementRef });
+        SetElementStyle(new Dictionary<string, string> { { property, value } });
     }
 
-    /// <summary>Set a single inline CSS property on the root element.</summary>
-    public void SetStyle(string property, string value)
+    internal void SetElementStyle(Dictionary<string, string> styles)
     {
-        var styles = new Dictionary<string, string> { { property, value } };
-        SetStyle(styles);
-    }
-
-    /// <summary>Set multiple inline CSS properties on the root element in one call.</summary>
-    public virtual void SetStyle(Dictionary<string, string> styles)
-    {
-        if (_module == null)
+        if (_instance == null)
         {
             throw new InvalidOperationException("Component not initialized");
         }
 
-        _module.InvokeVoidAsync("setElementStyle", new object?[] { ElementRef, styles });
+        _instance.InvokeVoidAsync("setElementStyle", new object?[] { styles });
+    }
+
+    /// <summary>Destroy the native TOAST UI instance and release JS references.</summary>
+    public async Task DestroyAsync()
+    {
+        await DisposeAsync();
     }
 
     public virtual async ValueTask DisposeAsync()
     {
-        if (_module == null)
+        if (_instance == null && _module == null)
         {
             return;
         }
 
+        var instance = _instance;
+        var module = _module;
+        _instance = null;
+        _module = null;
+
         try
         {
-            await _module.InvokeVoidAsync("dispose", new object?[] { ElementRef });
-            await _module.DisposeAsync();
+            if (instance != null)
+            {
+                await instance.InvokeVoidAsync("dispose");
+                await instance.DisposeAsync();
+            }
+
+            if (module != null)
+            {
+                await module.DisposeAsync();
+            }
         }
         catch (JSDisconnectedException) { }
 

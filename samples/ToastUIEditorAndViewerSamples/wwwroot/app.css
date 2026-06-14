@@ -1,0 +1,73 @@
+html, body {
+    font-family: Arial, sans-serif;
+}
+
+pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.sample-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sample-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.sample-card,
+.sample-panel {
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 1rem;
+    background: #fff;
+}
+
+.sample-card {
+    color: inherit;
+    text-decoration: none;
+}
+
+.sample-card:hover {
+    border-color: #0d6efd;
+}
+
+.button-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.editor-surface,
+.viewer-surface {
+    height: 32rem;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.viewer-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.viewer-panel .viewer-surface {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 24rem;
+}
+
+.sample-textarea {
+    width: 100%;
+    min-height: 24rem;
+    padding: 0.75rem;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    font: inherit;
+    resize: vertical;
+}

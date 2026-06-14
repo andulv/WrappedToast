@@ -4,11 +4,6 @@ const TOAST_UI_STYLESHEET_PATHS = [
     "_content/WrappedToast/lib/toastui-editor/theme/toastui-editor-dark.min.css"
 ];
 
-function defaultHtmlResolver(element) {
-    const contentElement = element.querySelector('.toastui-editor-contents');
-    return contentElement?.innerHTML ?? '';
-}
-
 function getLoaderState() {
     const loaderKey = "__wrappedToastToastUiLoader";
     const state = globalThis[loaderKey];
@@ -120,32 +115,6 @@ export async function initializeToastUiInstance(element, instanceStore, componen
     if (onInitialized) {
         onInitialized(instance);
     }
-}
-
-export function getToastUiHtml(element, instance, htmlResolver = defaultHtmlResolver) {
-    if (typeof instance.getHTML === 'function') {
-        return instance.getHTML();
-    }
-
-    return htmlResolver(element);
-}
-
-export async function copyPlainTextToClipboard(text) {
-    await navigator.clipboard.writeText(text);
-}
-
-export async function copyRichTextToClipboard(html, plainText) {
-    if (navigator.clipboard?.write && globalThis.ClipboardItem) {
-        const clipboardItem = new ClipboardItem({
-            'text/html': new Blob([html], { type: 'text/html' }),
-            'text/plain': new Blob([plainText], { type: 'text/plain' })
-        });
-
-        await navigator.clipboard.write([clipboardItem]);
-        return;
-    }
-
-    await copyPlainTextToClipboard(plainText);
 }
 
 export function setToastUiElementStyle(element, styles) {

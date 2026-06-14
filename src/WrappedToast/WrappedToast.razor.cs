@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace WrappedToast;
 
@@ -7,8 +8,10 @@ namespace WrappedToast;
 /// and optional front-matter table. Consumers can inject host-specific buttons via
 /// <see cref="ToolbarExtras"/>.
 /// </summary>
-public partial class WrappedToast
+public partial class WrappedToast : IAsyncDisposable
 {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
     /// <summary>Optional title rendered in the toolbar.</summary>
     [Parameter] public string Title { get; set; } = "";
 
@@ -43,10 +46,13 @@ public partial class WrappedToast
     private ToastUIEditor _editor = null!;
     private ToastUIEditorViewer _viewer = null!;
     private FrontMatterPanel _frontMatterPanel = null!;
+    private ElementReference _viewerHost;
+    private IJSObjectReference? _module;
     private bool _isEditing;
     private bool _isSaving;
     private TextContentWithFrontMatter? _currentContent;
     private bool _currentContent_updated;
+    private bool _viewerRewritePending;
 
     // Frontmatter editing state
     private bool _isEditingFrontMatter;
@@ -82,26 +88,9 @@ public partial class WrappedToast
             ? "wysiwyg"
             : InitialEditType;
 
-        if (string.IsNullOrWhiteSpace(ViewerLinkBaseHref))
-        {
-            ViewerOptions.Remove("linkBaseHref");
-        }
-        else
-        {
-            ViewerOptions["linkBaseHref"] = ViewerLinkBaseHref;
-        }
-
-        if (string.IsNullOrWhiteSpace(ViewerImageBaseHref))
-        {
-            ViewerOptions.Remove("imageBaseHref");
-        }
-        else
-        {
-            ViewerOptions["imageBaseHref"] = ViewerImageBaseHref;
-        }
-
         _currentContent = TextContentWithFrontMatter.Parse(Content);
         _currentContent_updated = true;
+        _viewerRewritePending = true;
     }
 
     /// <summary>Replace the editor/viewer content programmatically.</summary>
@@ -109,6 +98,7 @@ public partial class WrappedToast
     {
         _currentContent = TextContentWithFrontMatter.Parse(content);
         _currentContent_updated = true;
+        _viewerRewritePending = true;
         StateHasChanged();
     }
 
@@ -198,7 +188,7 @@ public partial class WrappedToast
     {
         ThrowIfNotEditing();
         await EnsureMarkdownModeAsync();
-        return await _editor.GetSelectionAsync();
+        return await _editor.GetMarkdownSelectionAsync();
     }
 
     /// <summary>
@@ -264,28 +254,37 @@ public partial class WrappedToast
         return count;
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WrappedToast/WrappedToast.razor.js");
+        }
+
         if (_currentContent_updated)
         {
             if (_isEditing)
             {
-                _editor.SetMarkdown(_currentContent?.Body ?? string.Empty);
+                await _editor.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
             }
-            _viewer.SetLinkBaseHref(ViewerLinkBaseHref);
-            _viewer.SetImageBaseHref(ViewerImageBaseHref);
-            _viewer.SetMarkdown(_currentContent?.Body ?? string.Empty);
+            await _viewer.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
             _currentContent_updated = false;
+            _viewerRewritePending = true;
         }
-        return Task.CompletedTask;
+
+        if (_viewerRewritePending && _module != null)
+        {
+            await _module.InvokeVoidAsync("rewriteRelativeUrls", _viewerHost, ViewerLinkBaseHref, ViewerImageBaseHref);
+            _viewerRewritePending = false;
+        }
     }
 
     private void EnterEditMode()
     {
         _isEditing = true;
         _editor.SetMarkdown(_currentContent?.Body ?? string.Empty);
-        _editor.SetStyle("display", "block");
-        _viewer.SetStyle("display", "none");
+        _editor.SetElementStyle("display", "block");
+        _viewer.SetElementStyle("display", "none");
 
         // If frontmatter exists, enter frontmatter edit mode
         if (_currentContent?.FrontMatterRows.Count > 0)
@@ -297,8 +296,8 @@ public partial class WrappedToast
     private void ExitEditMode()
     {
         _isEditing = false;
-        _editor.SetStyle("display", "none");
-        _viewer.SetStyle("display", "block");
+        _editor.SetElementStyle("display", "none");
+        _viewer.SetElementStyle("display", "block");
         ExitFrontMatterEditMode();
     }
 
@@ -323,7 +322,9 @@ public partial class WrappedToast
             }
 
             await OnSave.InvokeAsync(_currentContent.ToMarkdownWithFrontMatter());
-            _viewer.SetMarkdown(_currentContent.Body);
+            _currentContent_updated = true;
+            _viewerRewritePending = true;
+            StateHasChanged();
         }
         finally
         {
@@ -334,24 +335,36 @@ public partial class WrappedToast
 
     private async Task CopyMarkdownAsync()
     {
-        if (_isEditing)
+        var markdown = _isEditing
+            ? await _editor.GetMarkdownAsync()
+            : _currentContent?.Body ?? string.Empty;
+
+        if (_module == null)
         {
-            await _editor.CopyMarkdownToClipboardAsync();
             return;
         }
 
-        await _viewer.CopyMarkdownToClipboardAsync();
+        await _module.InvokeVoidAsync("copyPlainTextToClipboard", markdown);
     }
 
     private async Task CopyHtmlAsync()
     {
-        if (_isEditing)
+        if (_module == null)
         {
-            await _editor.CopyHtmlToClipboardAsync();
             return;
         }
 
-        await _viewer.CopyHtmlToClipboardAsync();
+        if (_isEditing)
+        {
+            var html = await _editor.GetHtmlAsync();
+            var markdown = await _editor.GetMarkdownAsync();
+            await _module.InvokeVoidAsync("copyRichTextToClipboard", html, markdown);
+            return;
+        }
+
+        var htmlContent = await _module.InvokeAsync<string>("getInnerHtml", _viewerHost);
+        var markdownContent = _currentContent?.Body ?? string.Empty;
+        await _module.InvokeVoidAsync("copyRichTextToClipboard", htmlContent, markdownContent);
     }
 
     // ── Frontmatter editing ────────────────────────────────────────────
@@ -366,5 +379,19 @@ public partial class WrappedToast
     {
         _isEditingFrontMatter = false;
         // FrontMatterPanel clears its edit buffer when IsEditing becomes false
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
     }
 }

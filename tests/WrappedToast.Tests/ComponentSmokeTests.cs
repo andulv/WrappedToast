@@ -13,18 +13,21 @@ namespace WrappedToast.Tests;
 /// JS module paths still point to the expected static-asset URL under
 /// <c>./_content/WrappedToast/...</c>.
 /// </summary>
-public class ComponentSmokeTests : IDisposable
+public class ComponentSmokeTests : IAsyncDisposable
 {
     private readonly BunitContext _ctx;
 
     public ComponentSmokeTests()
     {
         _ctx = new BunitContext();
-        _ctx.Services.AddMudServices();
+        _ctx.Services.AddMudServices(options =>
+        {
+            options.PopoverOptions.CheckForPopoverProvider = false;
+        });
         _ctx.JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
-    public void Dispose() => _ctx.Dispose();
+    public async ValueTask DisposeAsync() => await _ctx.DisposeAsync();
 
     [Fact]
     public void ToastUIEditor_Renders_Root_Div_With_InitialStyle()

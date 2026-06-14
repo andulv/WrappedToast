@@ -5,13 +5,40 @@
 @code {
     protected override string JsModulePath => "./_content/WrappedToast/ToastUIEditorViewer.razor.js";
 
-    public void SetLinkBaseHref(string? linkBaseHref)
+    /// <summary>Set the markdown body shown by the viewer.</summary>
+    public void SetMarkdown(string markdown)
     {
-        _module?.InvokeVoidAsync("setLinkBaseHref", new object?[] { ElementRef, linkBaseHref });
+        SetMarkdownCore(markdown);
     }
 
-    public void SetImageBaseHref(string? imageBaseHref)
+    /// <summary>Set the markdown body shown by the viewer.</summary>
+    public async Task SetMarkdownAsync(string markdown)
     {
-        _module?.InvokeVoidAsync("setImageBaseHref", new object?[] { ElementRef, imageBaseHref });
+        await SetMarkdownCoreAsync(markdown);
     }
+
+    /// <summary>Check whether the wrapped native component is a viewer.</summary>
+    public async Task<bool> IsViewerAsync()
+    {
+        return await InvokeBoolMethodAsync("isViewer", true);
+    }
+
+    /// <summary>Check whether the viewer is in markdown mode.</summary>
+    public async Task<bool> IsMarkdownModeAsync()
+    {
+        return await InvokeBoolMethodAsync("isMarkdownMode");
+    }
+
+    /// <summary>Check whether the viewer is in WYSIWYG mode.</summary>
+    public async Task<bool> IsWysiwygModeAsync()
+    {
+        return await InvokeBoolMethodAsync("isWysiwygMode");
+    }
+
+    /// <summary>Unbind handlers for the given event type.</summary>
+    public async Task OffAsync(string type)
+    {
+        await InvokeVoidMethodAsync("off", type);
+    }
+
 }

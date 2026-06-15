@@ -3,7 +3,7 @@
 - `ToastUIEditor` and `ToastUIEditorViewer`: thin Blazor wrappers around the native TOAST UI JavaScript editor and viewer. They depend on Blazor and the bundled TOAST UI assets only.
 - `WrappedToast`: a higher-level MudBlazor component built on top of those thin wrappers.
 
-TOAST UI Editor assets are bundled. No CDN required.
+TOAST UI Editor assets are bundled and automatically loaded by components.
 
 
 ## Projects
@@ -15,20 +15,32 @@ TOAST UI Editor assets are bundled. No CDN required.
 
 ## Screenshots
 
-![WrappedToast light theme](doc/screenshot-wrappedtoast-light.png)
+<a href="doc/screenshot-wrappedtoast-light.png">
+  <img src="doc/screenshot-wrappedtoast-light.png" alt="WrappedToast light theme" width="480">
+</a>
+
 *WrappedToast component in light theme with toolbar and front-matter table.*
 
-![Editor and viewer dark theme](doc/screenshot-editor-viewer-dark.png)
+
+<a href="doc/screenshot-editor-viewer-dark.png">
+  <img src="doc/screenshot-editor-viewer-dark.png" alt="Editor and viewer dark theme" width="480">
+</a>
+
 *ToastUIEditor and ToastUIEditorViewer in dark theme.*
 
-![Full-height editor dark theme](doc/screenshot-full-height-editor-dark.png)
+
+<a href="doc/screenshot-full-height-editor-dark.png">
+  <img src="doc/screenshot-full-height-editor-dark.png" alt="Full-height editor dark theme" width="480">
+</a>
+
 *Full-height editor layout in dark theme.*
 
 
-## Assets
+## Dependencies
 
-- TOAST UI Editor 3.2.2 assets vendored under `wwwroot/lib/toastui-editor/` and served at `/_content/WrappedToast/lib/toastui-editor/...` — no CDN dependency
-- Components self-register their CSS/JS via the bundled loader — no host-side wiring needed. The bundled `toastui-loader.js` auto-injects CSS and JS into the page when a component initializes — no `<script>` or `<link>` tags needed in the host app.
+- TOAST UI Editor 3.2.2 assets are included in this package. vendored under `wwwroot/lib/toastui-editor/` and served at `/_content/WrappedToast/lib/toastui-editor/...` — no CDN dependency
+- Components self-register their CSS/JS via the bundled loader. No `<script>` or `<link>` tags needed in the host app.
+- WrappedToast and its sample application uses MudBlazor components
 
 
 ## ToastUIEditor / ToastUIEditorViewer - Features
@@ -36,33 +48,27 @@ TOAST UI Editor assets are bundled. No CDN required.
 - Thin wrappers around the native TOAST UI Editor and Viewer.
 - Constructor options are forwarded through `Options`.
 - Straightforward native methods are exposed as Blazor methods. JS callback and DOM-node APIs are intentionally not wrapped as direct C# methods.
-- See [API Reference](doc/api-reference.md) for the full method list.
+- See [ToastUIEditor API Reference](doc/toastuieditor.md) and [ToastUIEditorViewer API Reference](doc/toastuieditorviewer.md) for the full method list.
 
 
 ## WrappedToast - Features
 
 - Optional YAML-style `---` front-matter parsed, displayed, and edited inline
 - `ToolbarExtras` `RenderFragment` to inject host-specific buttons without coupling the package to host navigation
-- Copy-as-markdown and copy-as-HTML toolbar actions
+- Copy-as-markdown and copy-as-HTML toolbar actions, with clipboard failures surfaced through a `MudBlazor.ISnackbar`
 - Programmatic API on WrappedToast: insert, replace, find-and-replace, cursor movement
 - Light and dark theme support
 
 
 ## Usage
 
-Choose the component level you need.
-
-### ToastUIEditor / ToastUIEditorViewer Parameters
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `InitialStyle` | `string?` | `null` | Inline `style` attribute on the root `<div>` |
-| `Options` | `Dictionary<string,string>?` | `null` | Options forwarded to the TOAST UI constructor |
+### Documentation
+[Toast UI Editor component API reference](doc/toastuieditor.md) 
+[Toast UI Editor Viewer component API reference](doc/toastuieditorviewer.md) 
+[WrappedToast component API Reference](doc/wrappedtoast.md) 
 
 
 ### Using ToastUIEditor or ToastUIEditorViewer
-
-These components do not require MudBlazor.
 
 ```razor
 @using WrappedToast
@@ -121,13 +127,11 @@ private Task HandleSaveAsync(string markdown)
 }
 ```
 
-## WrappedToast Parameters
+## Samples
 
-See [API Reference](doc/api-reference.md) for the full method list including programmatic editor APIs.
+### Wrapped Toast, Toast UI Editor and Toast UI Viewer - MudBlazor:
 
-## Sample
-
-Run the sample from the repository root:
+Run the MudBlazor sample host from the repository root:
 
 ```bash
 dotnet run --project samples/WrappedToast.SampleHost
@@ -135,13 +139,19 @@ dotnet run --project samples/WrappedToast.SampleHost
 
 Then open the URL printed to the console (typically `https://localhost:5001/`).
 
-The sample demonstrates `ToastUIEditor`, `ToastUIEditorViewer`, and `WrappedToast` including round-trip front-matter editing, the `ToolbarExtras` extension point, and light/dark theme toggling.
+This sample demonstrates all three components, including `WrappedToast` front-matter round-trip, `ToolbarExtras`, and light/dark theme toggling.
 
-For a plain Blazor sample without MudBlazor:
+
+### Toast UI Editor and Toast UI Viewer - Plain Blazor:
+
+Run the ToastUIEditorAndViewerSamples sample host from the repository root:
 
 ```bash
 dotnet run --project samples/ToastUIEditorAndViewerSamples
 ```
+
+This sample demonstrates the thin `ToastUIEditor` and `ToastUIEditorViewer` wrappers only.
+
 
 ## License and attribution
 

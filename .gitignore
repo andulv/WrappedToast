@@ -12,6 +12,7 @@
 .vs/
 .idea/
 *.swp
+.playwright-mcp/
 
 # Secrets — never commit
 **/secrets.json
@@ -29,6 +30,7 @@ Thumbs.db
 
 # Test results
 **/TestResults/
-tmp-symlink-to-catherder-instructions-repo
+
+# docker mounts
 docker/kreuzberg/config/
 docker/kreuzberg/workspace/

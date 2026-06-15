@@ -68,6 +68,8 @@ public class ThinWrapperApiSurfaceTests
         string[] expected =
         [
             "DestroyAsync",
+            "GetHtmlAsync",
+            "GetMarkdownAsync",
             "IsMarkdownModeAsync",
             "IsViewerAsync",
             "IsWysiwygModeAsync",

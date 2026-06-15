@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
+using MudBlazor;
 
 namespace WrappedToast;
 
@@ -11,6 +13,8 @@ namespace WrappedToast;
 public partial class WrappedToast : IAsyncDisposable
 {
     [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private ILogger<WrappedToast> Logger { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
     /// <summary>Optional title rendered in the toolbar.</summary>
     [Parameter] public string Title { get; set; } = "";
@@ -48,6 +52,7 @@ public partial class WrappedToast : IAsyncDisposable
     private FrontMatterPanel _frontMatterPanel = null!;
     private ElementReference _viewerHost;
     private IJSObjectReference? _module;
+    private IJSObjectReference? _wrapper;
     private bool _isEditing;
     private bool _isSaving;
     private TextContentWithFrontMatter? _currentContent;
@@ -259,6 +264,7 @@ public partial class WrappedToast : IAsyncDisposable
         if (firstRender)
         {
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WrappedToast/WrappedToast.razor.js");
+            _wrapper = await _module.InvokeAsync<IJSObjectReference>("create");
         }
 
         if (_currentContent_updated)
@@ -272,9 +278,9 @@ public partial class WrappedToast : IAsyncDisposable
             _viewerRewritePending = true;
         }
 
-        if (_viewerRewritePending && _module != null)
+        if (_viewerRewritePending && _wrapper != null)
         {
-            await _module.InvokeVoidAsync("rewriteRelativeUrls", _viewerHost, ViewerLinkBaseHref, ViewerImageBaseHref);
+            await _wrapper.InvokeVoidAsync("rewriteRelativeUrls", _viewerHost, ViewerLinkBaseHref, ViewerImageBaseHref);
             _viewerRewritePending = false;
         }
     }
@@ -333,39 +339,70 @@ public partial class WrappedToast : IAsyncDisposable
         }
     }
 
-    private async Task CopyMarkdownAsync()
+    private async Task CopyContentToClipboardAsync()
     {
-        var markdown = _isEditing
-            ? await _editor.GetMarkdownAsync()
-            : _currentContent?.Body ?? string.Empty;
-
-        if (_module == null)
+        var wrapper = _wrapper ?? throw new InvalidOperationException("WrappedToast JavaScript module is not initialized.");
+        try
         {
-            return;
+            var instance = _isEditing ? _editor.JsInstance : _viewer.JsInstance;
+            if (instance is null) throw new InvalidOperationException("Editor/viewer instance is not initialized.");
+            await wrapper.InvokeVoidAsync("copyContent", instance);
         }
-
-        await _module.InvokeVoidAsync("copyPlainTextToClipboard", markdown);
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy content to the clipboard.");
+            Snackbar.Add("Could not copy content to clipboard. Check browser clipboard permissions. \n" + ex.Message, Severity.Error);
+        }
     }
 
-    private async Task CopyHtmlAsync()
+    private async Task CopyMarkdownToClipboardAsync()
     {
-        if (_module == null)
+        var wrapper = _wrapper ?? throw new InvalidOperationException("WrappedToast JavaScript module is not initialized.");
+        try
         {
-            return;
+            var instance = _isEditing ? _editor.JsInstance : _viewer.JsInstance;
+            if (instance is null) throw new InvalidOperationException("Editor/viewer instance is not initialized.");
+            await wrapper.InvokeVoidAsync("copyMarkdown", instance);
         }
-
-        if (_isEditing)
+        catch (Exception ex)
         {
-            var html = await _editor.GetHtmlAsync();
-            var markdown = await _editor.GetMarkdownAsync();
-            await _module.InvokeVoidAsync("copyRichTextToClipboard", html, markdown);
-            return;
+            Logger.LogError(ex, "Failed to copy content to the clipboard.");
+            Snackbar.Add("Could not copy content to clipboard. Check browser clipboard permissions. \n" + ex.Message, Severity.Error);
         }
-
-        var htmlContent = await _module.InvokeAsync<string>("getInnerHtml", _viewerHost);
-        var markdownContent = _currentContent?.Body ?? string.Empty;
-        await _module.InvokeVoidAsync("copyRichTextToClipboard", htmlContent, markdownContent);
     }
+
+    private async Task CopyHtmlToClipboardAsync()
+    {
+        var wrapper = _wrapper ?? throw new InvalidOperationException("WrappedToast JavaScript module is not initialized.");
+        try
+        {
+            var instance = _isEditing ? _editor.JsInstance : _viewer.JsInstance;
+            if (instance is null) throw new InvalidOperationException("Editor/viewer instance is not initialized.");
+            await wrapper.InvokeVoidAsync("copyHtml", instance);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy content to the clipboard.");
+            Snackbar.Add("Could not copy content to clipboard. Check browser clipboard permissions. \n" + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task PrintContentAsync()
+    {
+        var wrapper = _wrapper ?? throw new InvalidOperationException("WrappedToast JavaScript module is not initialized.");
+        try
+        {
+            var instance = _isEditing ? _editor.JsInstance : _viewer.JsInstance;
+            if (instance is null) throw new InvalidOperationException("Editor/viewer instance is not initialized.");
+            await wrapper.InvokeVoidAsync("printContent", instance, Title);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to print content.");
+            Snackbar.Add("Could not print content. \n" + ex.Message, Severity.Error);
+        }
+    }
+
 
     // ── Frontmatter editing ────────────────────────────────────────────
 
@@ -383,14 +420,27 @@ public partial class WrappedToast : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_module == null)
+        if (_module == null && _wrapper == null)
         {
             return;
         }
 
+        var wrapper = _wrapper;
+        var module = _module;
+        _wrapper = null;
+        _module = null;
+
         try
         {
-            await _module.DisposeAsync();
+            if (wrapper != null)
+            {
+                await wrapper.DisposeAsync();
+            }
+
+            if (module != null)
+            {
+                await module.DisposeAsync();
+            }
         }
         catch (JSDisconnectedException) { }
     }

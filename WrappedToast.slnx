@@ -1,0 +1,17 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/samples/">
+    <Project Path="samples/ToastUIEditorAndViewerSamples/ToastUIEditorAndViewerSamples.csproj" />
+    <Project Path="samples/WrappedToast.SampleHost/WrappedToast.SampleHost.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/WrappedToast/WrappedToast.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WrappedToast.Tests/WrappedToast.Tests.csproj" />
+  </Folder>
+</Solution>

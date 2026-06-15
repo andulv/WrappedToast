@@ -17,6 +17,18 @@
         await SetMarkdownCoreAsync(markdown);
     }
 
+    /// <summary>Get the markdown body currently shown by the viewer.</summary>
+    public async Task<string> GetMarkdownAsync()
+    {
+        return await InvokeStringMethodAsync("getMarkdown");
+    }
+
+    /// <summary>Get the current rendered HTML body from the viewer.</summary>
+    public async Task<string> GetHtmlAsync()
+    {
+        return await InvokeStringMethodAsync("getHTML");
+    }
+
     /// <summary>Check whether the wrapped native component is a viewer.</summary>
     public async Task<bool> IsViewerAsync()
     {

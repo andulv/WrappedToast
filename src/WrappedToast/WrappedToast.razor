@@ -1,7 +1,8 @@
 @inherits ComponentBase
 
 <div class="wrapped-toast-shell d-flex flex-column flex-1 gap-2 mud-width-full">
-    <MudStack Row="true" AlignItems="AlignItems.Stretch" Justify="Justify.SpaceBetween" Class="flex-none wrapped-toast-toolbar">
+    <MudStack Row="true" AlignItems="AlignItems.Stretch" Justify="Justify.SpaceBetween"
+              Class="flex-none wrapped-toast-toolbar">
         @if (ShowTitle && !string.IsNullOrWhiteSpace(Title))
         {
             <MudText Typo="Typo.h6">@Title</MudText>
@@ -13,63 +14,42 @@
         @if (_currentContent != null)
         {
             <MudStack Row="true" Spacing="1">
-                <MudButtonGroup Variant="Variant.Outlined"
-                            Color="Color.Primary"
-                                Size="Size.Small"
-                            Class="wrapped-toast-copy-group"
-                                DropShadow="false">
-                    <MudButton StartIcon="@Icons.Material.Filled.ContentCopy"
-                               OnClick="CopyMarkdownAsync"
-                           Style="text-transform:none;"
-                               Disabled="_isSaving">
-                       Copy markdown
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                            StartIcon="@Icons.Material.Filled.Print" OnClick="PrintContentAsync">
+                    Print
+                </MudButton>
+                <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                Class="wrapped-toast-copy-group" DropShadow="false">
+                    <MudButton StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="CopyContentToClipboardAsync"
+                               Style="text-transform:none;" Disabled="_isSaving">
+                        Copy
                     </MudButton>
-                    <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"
-                             Dense="true"
-                         Variant="Variant.Text"
-                         Color="Color.Primary"
-                             Size="Size.Small"
-                         Class="wrapped-toast-copy-menu"
-                         Style="align-self:auto;"
-                             Disabled="_isSaving"
-                             AriaLabel="Copy options"
-                             AnchorOrigin="Origin.BottomRight"
+                    <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown" Dense="true" Variant="Variant.Text"
+                             Color="Color.Primary" Size="Size.Small" Class="wrapped-toast-copy-menu" Style="align-self:auto;"
+                             Disabled="_isSaving" AriaLabel="Copy options" AnchorOrigin="Origin.BottomRight"
                              TransformOrigin="Origin.TopRight">
-                        <MudMenuItem Icon="@Icons.Material.Filled.ContentCopy"
-                                     Label="Copy as markdown"
-                                     OnClick="CopyMarkdownAsync" />
-                        <MudMenuItem Icon="@Icons.Material.Filled.Html"
-                                     Label="Copy as HTML"
-                                     OnClick="CopyHtmlAsync" />
+                        <MudMenuItem Icon="@Icons.Material.Filled.ContentCopy" Label="Copy as markdown"
+                                     OnClick="CopyMarkdownToClipboardAsync" />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Html" Label="Copy as HTML"
+                                     OnClick="CopyHtmlToClipboardAsync" />
                     </MudMenu>
                 </MudButtonGroup>
 
                 @if (_isEditing)
                 {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.Save"
-                               OnClick="SaveAsync"
-                               Disabled="_isSaving">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync" Disabled="_isSaving">
                         Save
                     </MudButton>
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Default"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.Cancel"
-                               OnClick="ExitEditMode"
-                               Disabled="_isSaving">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Cancel" OnClick="ExitEditMode" Disabled="_isSaving">
                         Cancel
                     </MudButton>
                 }
                 else
                 {
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Default"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.Edit"
-                               OnClick="EnterEditMode">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Edit" OnClick="EnterEditMode">
                         Edit
                     </MudButton>
                     @ToolbarExtras
@@ -80,18 +60,15 @@
 
     @if (_currentContent?.FrontMatterRows.Count > 0)
     {
-        <FrontMatterPanel @ref="_frontMatterPanel"
-                          FrontMatterRows="@_currentContent.FrontMatterRows"
+        <FrontMatterPanel @ref="_frontMatterPanel" FrontMatterRows="@_currentContent.FrontMatterRows"
                           IsEditing="@_isEditingFrontMatter" />
     }
 
     <div class="flex-1 overflow-hidden mud-width-full" style="min-width:0;min-height:0;">
-        <ToastUIEditor @ref="_editor"
-                       InitialStyle="display: none; width:100%; height:100%; overflow:auto;"
+        <ToastUIEditor @ref="_editor" InitialStyle="display: none; width:100%; height:100%; overflow:auto;"
                        Options="EditorOptions" />
         <div @ref="_viewerHost" class="mud-width-full" style="width:100%;height:100%;">
-            <ToastUIEditorViewer @ref="_viewer"
-                                 InitialStyle="display: block; width:100%; height:100%; overflow:auto;"
+            <ToastUIEditorViewer @ref="_viewer" InitialStyle="display: block; width:100%; height:100%; overflow:auto;"
                                  Options="ViewerOptions" />
         </div>
     </div>

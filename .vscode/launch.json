@@ -1,0 +1,69 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C#: WrappedToast.SampleHost Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/samples/WrappedToast.SampleHost/bin/Debug/net10.0/WrappedToast.SampleHost.dll",
+      "cwd": "${workspaceFolder}/samples/WrappedToast.SampleHost",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "preLaunchTask": "build: SampleHost",
+      "console": "integratedTerminal",
+      "checkForDevCert": true
+    },
+    {
+      "name": "C#: WrappedToast.SampleHost Watch",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "watch",
+        "--project",
+        "${workspaceFolder}/samples/WrappedToast.SampleHost"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "checkForDevCert": true
+    },
+    {
+      "name": "C#: ToastUIEditorAndViewerSamples Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/samples/ToastUIEditorAndViewerSamples/bin/Debug/net10.0/ToastUIEditorAndViewerSamples.dll",
+      "cwd": "${workspaceFolder}/samples/ToastUIEditorAndViewerSamples",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "preLaunchTask": "build: ToastUIEditorAndViewerSamples",
+      "console": "integratedTerminal",
+      "checkForDevCert": true
+    },
+    {
+      "name": "C#: ToastUIEditorAndViewerSamples Watch",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "watch",
+        "--project",
+        "${workspaceFolder}/samples/ToastUIEditorAndViewerSamples"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "checkForDevCert": true
+    }
+  ]
+}

@@ -26,13 +26,24 @@ export async function initialize(viewerElement, options) {
     );
 
     const instance = getToastUiInstance(viewerElement, viewerInstances, 'viewer');
+    instance.__wrappedToastMarkdown = resolvedOptions.initialValue ?? '';
 
     return {
-        setMarkdown: (markdown) => instance.setMarkdown(markdown),
+        //Methods in native components exposed as is
+        setMarkdown: (markdown) => {
+            instance.__wrappedToastMarkdown = markdown ?? '';
+            instance.setMarkdown(markdown);
+        },
         isViewer: () => instance.isViewer(),
         isMarkdownMode: () => instance.isMarkdownMode(),
         isWysiwygMode: () => instance.isWysiwygMode(),
-        off: (type) => instance.off(type),
+
+        // Wrapper-owned read methods
+        getMarkdown: () => instance.__wrappedToastMarkdown ?? '',
+        getHTML: () => {
+            const contentElement = viewerElement.querySelector('.toastui-editor-contents');
+            return contentElement ? contentElement.innerHTML : '';
+        },
         setElementStyle: (styles) => setToastUiElementStyle(viewerElement, styles),
         dispose: () => disposeToastUiInstance(viewerElement, viewerInstances)
     };

@@ -21,6 +21,7 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
     protected ElementReference ElementRef;
     protected IJSObjectReference? _module;
     protected IJSObjectReference? _instance;
+    internal IJSObjectReference? JsInstance => _instance;
     private string? _pendingMarkdown;
     private bool _pendingMarkdownCursorToEnd = true;
 

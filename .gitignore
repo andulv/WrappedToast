@@ -34,3 +34,7 @@ Thumbs.db
 # docker mounts
 docker/kreuzberg/config/
 docker/kreuzberg/workspace/
+
+data/
+
+

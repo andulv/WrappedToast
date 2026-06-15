@@ -4,7 +4,7 @@
 
 <div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden mud-width-full">
     <MudPaper Class="pa-3 d-flex flex-column flex-1 overflow-hidden">
-        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3 flex-none">
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3 flex-none wrappedtoast-sample-toolbar">
             <MudSelect T="string"
                        Label="Sample Document"
                        Value="_selectedSampleKey"
@@ -18,6 +18,26 @@
                     <MudSelectItem T="string" Value="@sample.Key">@sample.Name</MudSelectItem>
                 }
             </MudSelect>
+
+            <MudFileUpload T="IBrowserFile"
+                           Accept=".md,text/markdown,text/plain"
+                           Hidden="true"
+                           DragAndDrop="true"
+                           FilesChanged="OnUploadedMarkdownChanged"
+                           Dragging="_isUploadDragging"
+                           DraggingChanged="OnUploadDraggingChanged"
+                           Class="wrappedtoast-sample-upload">
+                <CustomContent>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               StartIcon="@(_isUploadDragging ? Icons.Material.Filled.FileDownload : Icons.Material.Filled.UploadFile)"
+                               OnClick="context.OpenFilePickerAsync"
+                               Class="@GetUploadButtonClass()">
+                        Upload
+                    </MudButton>
+                </CustomContent>
+                <SelectedTemplate />
+            </MudFileUpload>
         </MudStack>
 
         <div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden">
@@ -43,18 +63,47 @@
 </div>
 
 @code {
+    private const long MaxUploadedMarkdownBytes = 1_048_576;
+
     private string _selectedSampleKey = SampleMarkdownContent.DefaultKey;
     private string _wrappedTitle = "sample.md";
     private string _wrappedContent = SampleMarkdownContent.GetByKey(SampleMarkdownContent.DefaultKey).Markdown;
     private string _lastSaved = "(nothing saved yet)";
+    private string _loadedTitle = "sample.md";
+    private string _loadedContent = SampleMarkdownContent.GetByKey(SampleMarkdownContent.DefaultKey).Markdown;
+    private bool _isUploadDragging;
 
     private SampleMarkdownDefinition SelectedSample => SampleMarkdownContent.GetByKey(_selectedSampleKey);
+
+    protected override void OnInitialized()
+    {
+        SyncLoadedDocument(_wrappedTitle, _wrappedContent);
+    }
 
     private void OnSampleChanged(string value)
     {
         _selectedSampleKey = value;
-        _wrappedContent = SelectedSample.Markdown;
-        _wrappedTitle = $"{SelectedSample.Key}.md";
+        SyncLoadedDocument($"{SelectedSample.Key}.md", SelectedSample.Markdown);
+    }
+
+    private async Task OnUploadedMarkdownChanged(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        await using var stream = file.OpenReadStream(MaxUploadedMarkdownBytes);
+        using var reader = new StreamReader(stream);
+        var markdown = await reader.ReadToEndAsync();
+
+        SyncLoadedDocument(file.Name, markdown);
+        _isUploadDragging = false;
+    }
+
+    private void OnUploadDraggingChanged(bool isDragging)
+    {
+        _isUploadDragging = isDragging;
     }
 
     private Task OnWrappedSaveAsync(string fullMarkdown)
@@ -65,7 +114,23 @@
 
     private void ResetWrappedSample()
     {
-        _wrappedContent = SelectedSample.Markdown;
+        _wrappedTitle = _loadedTitle;
+        _wrappedContent = _loadedContent;
         StateHasChanged();
+    }
+
+    private void SyncLoadedDocument(string title, string markdown)
+    {
+        _loadedTitle = title;
+        _loadedContent = markdown;
+        _wrappedTitle = title;
+        _wrappedContent = markdown;
+    }
+
+    private string GetUploadButtonClass()
+    {
+        return _isUploadDragging
+            ? "wrappedtoast-upload-button wrappedtoast-upload-button-dragging"
+            : "wrappedtoast-upload-button";
     }
 }

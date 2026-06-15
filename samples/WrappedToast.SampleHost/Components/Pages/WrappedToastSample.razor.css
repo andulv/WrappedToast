@@ -1,0 +1,27 @@
+.wrappedtoast-sample-toolbar {
+    gap: 12px;
+}
+
+.wrappedtoast-sample-upload {
+    flex: 0 0 auto;
+}
+
+.wrappedtoast-upload-button {
+    height: 40px;
+    min-width: 132px;
+    max-width: 196px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wrappedtoast-upload-button-dragging {
+    border-style: dashed;
+}
+
+@media (max-width: 600px) {
+    .wrappedtoast-upload-button {
+        min-width: 116px;
+        max-width: 160px;
+    }
+}

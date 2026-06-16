@@ -330,12 +330,12 @@ public partial class WrappedToast : IAsyncDisposable
             await OnSave.InvokeAsync(_currentContent.ToMarkdownWithFrontMatter());
             _currentContent_updated = true;
             _viewerRewritePending = true;
-            StateHasChanged();
         }
         finally
         {
             _isSaving = false;
             ExitEditMode();
+            StateHasChanged();
         }
     }
 

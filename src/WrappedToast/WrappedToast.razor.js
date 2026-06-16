@@ -3,7 +3,8 @@ const toastuiStyles = '<style>'
     + 'h1{font-size:24px;font-weight:700;color:#222;border-bottom:3px double #999;padding-bottom:7px;margin:52px 0 15px;line-height:28px}'
     + 'h2{font-size:22px;font-weight:700;color:#222;border-bottom:1px solid #dbdbdb;padding-bottom:7px;margin:20px 0 13px;line-height:23px}'
     + 'h3{font-size:20px;font-weight:700;color:#222;margin:18px 0 2px;line-height:18px}'
-    + 'p{margin:10px 0;color:#222;line-height:1.6}'
+    + 'h4{font-size:18px;font-weight:700;color:#222;margin:18px 0 0;line-height:18px}'
+    + 'p{margin:4px 0 10px;color:#222;line-height:1.6}'
     + 'blockquote{color:#999;border-left:4px solid #e5e5e5;padding:0 16px;margin:14px 0}'
     + 'table{border-collapse:collapse;border:1px solid #ddd;margin:12px 0 14px;width:auto}'
     + 'th{background:#555;color:#fff;font-weight:300;padding:6px 14px 5px 12px;border:1px solid #ddd}'
@@ -20,7 +21,8 @@ const inlineStyles = {
     h1: 'font-size:24px;font-weight:700;color:#222;border-bottom:3px double #999;padding-bottom:7px;margin:14px 0 15px;' + fontFamily + ';line-height:28px',
     h2: 'font-size:22px;font-weight:700;color:#222;border-bottom:1px solid #dbdbdb;padding-bottom:7px;margin:20px 0 13px;' + fontFamily + ';line-height:23px',
     h3: 'font-size:20px;font-weight:700;color:#222;margin:18px 0 2px;' + fontFamily + ';line-height:18px',
-    p: 'margin:0;color:#222;line-height:1.6',
+    h4: 'font-size:18px;font-weight:700;color:#222;margin:18px 0 0;' + fontFamily + ';line-height:18px',
+    p: 'margin:4px 0 10px;color:#222;line-height:1.6',
     blockquote: 'color:#999;border-left:4px solid #e5e5e5;padding:0 16px;margin:14px 0',
     table: 'border-collapse:collapse;border:1px solid #ddd;margin:12px 0 14px;width:auto',
     th: 'background:#555;color:#fff;font-weight:300;padding:6px 14px 5px 12px;border:1px solid #ddd',
@@ -64,6 +66,10 @@ function applyInlineStyles(html) {
 
     for (const h3 of tmp.querySelectorAll('h3')) {
         h3.setAttribute('style', 'color:#222;font-size:20px;font-weight:bold;margin:18px 0 2px;' + fontFamily + ';line-height:18px');
+    }
+
+    for (const h4 of tmp.querySelectorAll('h4')) {
+        h4.setAttribute('style', 'color:#222;font-size:18px;font-weight:bold;margin:18px 0 0;' + fontFamily + ';line-height:18px');
     }
 
     for (const blockquote of tmp.querySelectorAll('blockquote')) {

@@ -26,13 +26,13 @@
     /// <summary>Get the current HTML body from the editor.</summary>
     public async Task<string> GetHtmlAsync()
     {
-        return await InvokeStringMethodAsync("getHTML");
+        return await InvokeStringStreamMethodAsync("getHTML");
     }
 
     /// <summary>Get the current markdown text from the editor.</summary>
     public async Task<string> GetMarkdownAsync()
     {
-        return await InvokeStringMethodAsync("getMarkdown");
+        return await InvokeStringStreamMethodAsync("getMarkdown");
     }
 
     /// <summary>Insert text at the current cursor position.</summary>
@@ -62,13 +62,13 @@
     /// </summary>
     public async Task<string> GetSelectedTextAsync(int[] start, int[] end)
     {
-        return await InvokeStringMethodAsync("getSelectedText", start, end);
+        return await InvokeStringStreamMethodAsync("getSelectedText", start, end);
     }
 
     /// <summary>Get text in the given WYSIWYG offset range.</summary>
     public async Task<string> GetSelectedTextAsync(int start, int end)
     {
-        return await InvokeStringMethodAsync("getSelectedText", start, end);
+        return await InvokeStringStreamMethodAsync("getSelectedText", start, end);
     }
 
     /// <summary>

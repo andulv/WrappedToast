@@ -26,6 +26,7 @@ export async function initialize(viewerElement, options) {
     );
 
     const instance = getToastUiInstance(viewerElement, viewerInstances, 'viewer');
+    const toBlob = (str) => new Blob([new TextEncoder().encode(str)]);
     instance.__wrappedToastMarkdown = resolvedOptions.initialValue ?? '';
 
     return {
@@ -39,10 +40,10 @@ export async function initialize(viewerElement, options) {
         isWysiwygMode: () => instance.isWysiwygMode(),
 
         // Wrapper-owned read methods
-        getMarkdown: () => instance.__wrappedToastMarkdown ?? '',
+        getMarkdown: () => toBlob(instance.__wrappedToastMarkdown),
         getHTML: () => {
             const contentElement = viewerElement.querySelector('.toastui-editor-contents');
-            return contentElement ? contentElement.innerHTML : '';
+            return toBlob(contentElement.innerHTML);
         },
         setElementStyle: (styles) => setToastUiElementStyle(viewerElement, styles),
         dispose: () => disposeToastUiInstance(viewerElement, viewerInstances)

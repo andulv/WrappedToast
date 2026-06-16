@@ -55,7 +55,6 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
             _pendingMarkdownCursorToEnd = cursorToEnd;
             return;
         }
-
         await _instance.InvokeVoidAsync("setMarkdown", new object?[] { markdown, cursorToEnd });
     }
 
@@ -63,17 +62,29 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
     {
         if (_instance is null)
         {
-            return string.Empty;
+            throw new InvalidOperationException("Component not initialized");
+        }
+        return await _instance.InvokeAsync<string>(identifier, args);
+    }
+
+    protected async Task<string> InvokeStringStreamMethodAsync(string identifier, params object?[] args)
+    {
+        if (_instance is null)
+        {
+            throw new InvalidOperationException("Component not initialized");
         }
 
-        return await _instance.InvokeAsync<string>(identifier, args);
+        var dataReference = await _instance.InvokeAsync<IJSStreamReference>(identifier, args);
+        using var dataReferenceStream = await dataReference.OpenReadStreamAsync(maxAllowedSize: 10_000_000);
+        using var reader = new StreamReader(dataReferenceStream);
+        return await reader.ReadToEndAsync();
     }
 
     protected async Task<bool> InvokeBoolMethodAsync(string identifier, bool defaultValue = false, params object?[] args)
     {
         if (_instance is null)
         {
-            return defaultValue;
+            throw new InvalidOperationException("Component not initialized");
         }
 
         return await _instance.InvokeAsync<bool>(identifier, args);
@@ -83,7 +94,7 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
     {
         if (_instance is null)
         {
-            return defaultValue;
+            throw new InvalidOperationException("Component not initialized");
         }
 
         return await _instance.InvokeAsync<double>(identifier, args);
@@ -93,7 +104,7 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
     {
         if (_instance is null)
         {
-            return default;
+            throw new InvalidOperationException("Component not initialized");
         }
 
         return await _instance.InvokeAsync<JsonElement>(identifier, args);
@@ -103,7 +114,7 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
     {
         if (_instance is null)
         {
-            return;
+            throw new InvalidOperationException("Component not initialized");
         }
 
         await _instance.InvokeVoidAsync(identifier, args);

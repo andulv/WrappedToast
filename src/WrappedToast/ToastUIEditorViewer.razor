@@ -17,16 +17,16 @@
         await SetMarkdownCoreAsync(markdown);
     }
 
-    /// <summary>Get the markdown body currently shown by the viewer.</summary>
-    public async Task<string> GetMarkdownAsync()
+    /// <summary>Get the markdown body currently shown by the viewer. Transfered as stream from client to server.</summary>
+    public async Task<string> GetMarkdownAsBlobAsync()
     {
-        return await InvokeStringStreamMethodAsync("getMarkdown");
+        return await InvokeStringStreamMethodAsync("getMarkdownAsBlob");
     }
 
-    /// <summary>Get the current rendered HTML body from the viewer.</summary>
-    public async Task<string> GetHtmlAsync()
+    /// <summary>Get the current rendered HTML body from the viewer. Transfered as stream from client to server.</summary>
+    public async Task<string> GetHtmlAsBlobAsync()
     {
-        return await InvokeStringStreamMethodAsync("getHTML");
+        return await InvokeStringStreamMethodAsync("getHTMLAsBlob");
     }
 
     /// <summary>Check whether the wrapped native component is a viewer.</summary>

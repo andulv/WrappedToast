@@ -23,16 +23,16 @@
         await InvokeVoidMethodAsync("setHTML", html, cursorToEnd);
     }
 
-    /// <summary>Get the current HTML body from the editor.</summary>
-    public async Task<string> GetHtmlAsync()
+    /// <summary>Get the current rendered HTML body from the editor. Transfered as stream from client to server. </summary>
+    public async Task<string> GetHtmlAsBlobAsync()
     {
-        return await InvokeStringStreamMethodAsync("getHTML");
+        return await InvokeStringStreamMethodAsync("getHTMLAsBlob");
     }
 
-    /// <summary>Get the current markdown text from the editor.</summary>
-    public async Task<string> GetMarkdownAsync()
+    /// <summary>Get the current markdown text from the editor. Transfered as stream from client to server.</summary>
+    public async Task<string> GetMarkdownAsBlobAsync()
     {
-        return await InvokeStringStreamMethodAsync("getMarkdown");
+        return await InvokeStringStreamMethodAsync("getMarkdownAsBlob");
     }
 
     /// <summary>Insert text at the current cursor position.</summary>

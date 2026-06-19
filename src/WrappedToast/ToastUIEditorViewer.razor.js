@@ -40,11 +40,11 @@ export async function initialize(viewerElement, options) {
         isWysiwygMode: () => instance.isWysiwygMode(),
 
         // Wrapper-owned read methods
-        getMarkdown: () => toBlob(instance.__wrappedToastMarkdown),
-        getHTML: () => {
-            const contentElement = viewerElement.querySelector('.toastui-editor-contents');
-            return toBlob(contentElement.innerHTML);
-        },
+        getMarkdown: () => instance.__wrappedToastMarkdown,
+        getHTML: () => viewerElement.querySelector('.toastui-editor-contents').innerHTML,
+        getMarkdownAsBlob: () => toBlob(instance.__wrappedToastMarkdown),
+        getHTMLAsBlob: () => toBlob(viewerElement.querySelector('.toastui-editor-contents').innerHTML),
+
         setElementStyle: (styles) => setToastUiElementStyle(viewerElement, styles),
         dispose: () => disposeToastUiInstance(viewerElement, viewerInstances)
     };

@@ -29,8 +29,10 @@ export async function initialize(editorElement, options) {
 
     return {
         // Return the markdown as a Blob to avoid issues with large content and JS interop string size limits.
-        getMarkdown: () => toBlob(instance.getMarkdown()),
-        getHTML: () => toBlob(instance.getHTML()),
+        getMarkdown: () => instance.getMarkdown(),
+        getHTML: () => instance.getHTML(),
+        getMarkdownAsBlob: () => toBlob(instance.getMarkdown()),
+        getHTMLAsBlob: () => toBlob(instance.getHTML()),
         getSelectedText: (start, end) => toBlob(instance.getSelectedText(start, end)),
 
         setHTML: (html, cursorToEnd = true) => instance.setHTML(html, cursorToEnd),

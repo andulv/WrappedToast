@@ -33,7 +33,7 @@
                 <ToastUIEditorViewer @ref="_viewer"
                                      InitialStyle="display:block;width:100%;flex:1 1 auto;overflow:auto;"
                                      Options="@(new() { ["height"]="100%", ["viewer"]="true" })" />
-                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadSampleIntoViewer" Class="mt-2 flex-none">Load sample markdown</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadSampleIntoViewerAsync" Class="mt-2 flex-none">Load sample markdown</MudButton>
             </MudPaper>
         </MudItem>
 
@@ -79,9 +79,9 @@
         _lastReadLength = md.Length;
     }
 
-    private void LoadSampleIntoViewer()
+    private async Task LoadSampleIntoViewerAsync()
     {
-        _viewer.SetMarkdown(DefaultMarkdown);
+        await _viewer.SetMarkdownAsync(DefaultMarkdown);
     }
 
     private Task OnWrappedSaveAsync(string fullMarkdown)

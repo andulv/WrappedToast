@@ -45,7 +45,6 @@ public class ThinWrapperApiSurfaceTests
             "ResetAsync",
             "SetHeightAsync",
             "SetHtmlAsync",
-            "SetMarkdown",
             "SetMarkdownAsync",
             "SetMinHeightAsync",
             "SetPlaceholderAsync",
@@ -74,7 +73,6 @@ public class ThinWrapperApiSurfaceTests
             "IsViewerAsync",
             "IsWysiwygModeAsync",
             "OffAsync",
-            "SetMarkdown",
             "SetMarkdownAsync"
         ];
 

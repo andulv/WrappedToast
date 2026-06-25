@@ -41,9 +41,9 @@ export async function initialize(viewerElement, options) {
 
         // Wrapper-owned read methods
         getMarkdown: () => instance.__wrappedToastMarkdown,
+        getMarkdownAsBlob: () => toBlob(this.getMarkdown()),
         getHTML: () => viewerElement.querySelector('.toastui-editor-contents').innerHTML,
-        getMarkdownAsBlob: () => toBlob(instance.__wrappedToastMarkdown),
-        getHTMLAsBlob: () => toBlob(viewerElement.querySelector('.toastui-editor-contents').innerHTML),
+        getHTMLAsBlob: () => toBlob(this.getHTML()),
 
         setElementStyle: (styles) => setToastUiElementStyle(viewerElement, styles),
         dispose: () => disposeToastUiInstance(viewerElement, viewerInstances)

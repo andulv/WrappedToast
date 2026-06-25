@@ -9,9 +9,9 @@
     </section>
 
     <div class="button-row">
-        <button class="btn btn-primary" @onclick="ApplyMarkdown">Apply markdown</button>
-        <button class="btn btn-outline-secondary" @onclick="LoadDefaultSample">Load default sample</button>
-        <button class="btn btn-outline-secondary" @onclick="LoadTableSample">Load table sample</button>
+        <button class="btn btn-primary" @onclick="ApplyMarkdownAsync">Apply markdown</button>
+        <button class="btn btn-outline-secondary" @onclick="LoadDefaultSampleAsync">Load default sample</button>
+        <button class="btn btn-outline-secondary" @onclick="LoadTableSampleAsync">Load table sample</button>
     </div>
 
     <div class="sample-grid">
@@ -68,30 +68,30 @@ The viewer renders markdown directly.
     private ToastUIEditorViewer _viewer = null!;
     private string _markdown = DefaultMarkdown;
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
         {
             return;
         }
 
-        _viewer.SetMarkdown(_markdown);
+        await _viewer.SetMarkdownAsync(_markdown);
     }
 
-    private void ApplyMarkdown()
+    private async Task ApplyMarkdownAsync()
     {
-        _viewer.SetMarkdown(_markdown);
+        await _viewer.SetMarkdownAsync(_markdown);
     }
 
-    private void LoadDefaultSample()
+    private async Task LoadDefaultSampleAsync()
     {
         _markdown = DefaultMarkdown;
-        _viewer.SetMarkdown(_markdown);
+        await _viewer.SetMarkdownAsync(_markdown);
     }
 
-    private void LoadTableSample()
+    private async Task LoadTableSampleAsync()
     {
         _markdown = TableMarkdown;
-        _viewer.SetMarkdown(_markdown);
+        await _viewer.SetMarkdownAsync(_markdown);
     }
 }

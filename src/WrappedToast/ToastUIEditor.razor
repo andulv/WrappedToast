@@ -6,12 +6,6 @@
     protected override string JsModulePath => "./_content/WrappedToast/ToastUIEditor.razor.js";
 
     /// <summary>Set the markdown body shown by the editor.</summary>
-    public void SetMarkdown(string markdown, bool cursorToEnd = true)
-    {
-        SetMarkdownCore(markdown, cursorToEnd);
-    }
-
-    /// <summary>Set the markdown body shown by the editor.</summary>
     public async Task SetMarkdownAsync(string markdown, bool cursorToEnd = true)
     {
         await SetMarkdownCoreAsync(markdown, cursorToEnd);
@@ -24,13 +18,13 @@
     }
 
     /// <summary>Get the current rendered HTML body from the editor. Transfered as stream from client to server. </summary>
-    public async Task<string> GetHtmlAsBlobAsync()
+    public async Task<string> GetHtmlAsync()
     {
         return await InvokeStringStreamMethodAsync("getHTMLAsBlob");
     }
 
     /// <summary>Get the current markdown text from the editor. Transfered as stream from client to server.</summary>
-    public async Task<string> GetMarkdownAsBlobAsync()
+    public async Task<string> GetMarkdownAsync()
     {
         return await InvokeStringStreamMethodAsync("getMarkdownAsBlob");
     }

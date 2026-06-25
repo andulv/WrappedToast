@@ -116,7 +116,7 @@ public partial class WrappedToast : IAsyncDisposable
     public async Task<string> GetLiveContentAsync()
     {
         if (!_isEditing) return _currentContent?.Body ?? string.Empty;
-        return await _editor.GetMarkdownAsBlobAsync();
+        return await _editor.GetMarkdownAsync();
     }
 
     /// <summary>Get the full live content including frontmatter.</summary>
@@ -206,12 +206,12 @@ public partial class WrappedToast : IAsyncDisposable
         ThrowIfNotEditing();
         await EnsureMarkdownModeAsync();
 
-        var content = await _editor.GetMarkdownAsBlobAsync();
+        var content = await _editor.GetMarkdownAsync();
         var count = CountOccurrences(content, find);
         if (count == 0) return 0;
 
         var updated = content.Replace(find, replace, StringComparison.Ordinal);
-        _editor.SetMarkdown(updated);
+        await _editor.SetMarkdownAsync(updated);
         return count;
     }
 
@@ -225,12 +225,12 @@ public partial class WrappedToast : IAsyncDisposable
         ThrowIfNotEditing();
         await EnsureMarkdownModeAsync();
 
-        var content = await _editor.GetMarkdownAsBlobAsync();
+        var content = await _editor.GetMarkdownAsync();
         var idx = content.IndexOf(find, StringComparison.Ordinal);
         if (idx < 0) return false;
 
         var updated = string.Concat(content.AsSpan(0, idx), replace, content.AsSpan(idx + find.Length));
-        _editor.SetMarkdown(updated);
+        await _editor.SetMarkdownAsync(updated);
         return true;
     }
 
@@ -242,8 +242,8 @@ public partial class WrappedToast : IAsyncDisposable
         ThrowIfNotEditing();
         await EnsureMarkdownModeAsync();
 
-        var content = await _editor.GetMarkdownAsBlobAsync();
-        _editor.SetMarkdown(content + text);
+        var content = await _editor.GetMarkdownAsync();
+        await _editor.SetMarkdownAsync(content + text);
     }
 
     private static int CountOccurrences(string haystack, string needle)
@@ -288,9 +288,9 @@ public partial class WrappedToast : IAsyncDisposable
     private void EnterEditMode()
     {
         _isEditing = true;
-        _editor.SetMarkdown(_currentContent?.Body ?? string.Empty);
-        _editor.SetElementStyle("display", "block");
-        _viewer.SetElementStyle("display", "none");
+        _=_editor.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
+        _=_editor.SetElementStyleAsync("display", "block");
+        _=_viewer.SetElementStyleAsync("display", "none");
 
         // If frontmatter exists, enter frontmatter edit mode
         if (_currentContent?.FrontMatterRows.Count > 0)
@@ -302,8 +302,8 @@ public partial class WrappedToast : IAsyncDisposable
     private void ExitEditMode()
     {
         _isEditing = false;
-        _editor.SetElementStyle("display", "none");
-        _viewer.SetElementStyle("display", "block");
+        _=_editor.SetElementStyleAsync("display", "none");
+        _=_viewer.SetElementStyleAsync("display", "block");
         ExitFrontMatterEditMode();
     }
 
@@ -317,7 +317,7 @@ public partial class WrappedToast : IAsyncDisposable
         _isSaving = true;
         try
         {
-            _currentContent.Body = await _editor.GetMarkdownAsBlobAsync();
+            _currentContent.Body = await _editor.GetMarkdownAsync();
 
             // If frontmatter was being edited, pull the edited rows from the panel
             if (_isEditingFrontMatter)

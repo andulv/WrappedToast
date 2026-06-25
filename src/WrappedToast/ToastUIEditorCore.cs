@@ -42,11 +42,6 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
         }
     }
 
-    protected void SetMarkdownCore(string markdown, bool cursorToEnd = true)
-    {
-        _ = SetMarkdownCoreAsync(markdown, cursorToEnd);
-    }
-
     protected async Task SetMarkdownCoreAsync(string markdown, bool cursorToEnd = true)
     {
         if (_instance == null)
@@ -120,19 +115,19 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
         await _instance.InvokeVoidAsync(identifier, args);
     }
 
-    internal void SetElementStyle(string property, string value)
+    internal async Task SetElementStyleAsync(string property, string value)
     {
-        SetElementStyle(new Dictionary<string, string> { { property, value } });
+        await SetElementStyleAsync(new Dictionary<string, string> { { property, value } });
     }
 
-    internal void SetElementStyle(Dictionary<string, string> styles)
+    internal async Task SetElementStyleAsync(Dictionary<string, string> styles)
     {
         if (_instance == null)
         {
             throw new InvalidOperationException("Component not initialized");
         }
 
-        _instance.InvokeVoidAsync("setElementStyle", new object?[] { styles });
+        await _instance.InvokeVoidAsync("setElementStyle", new object?[] { styles });
     }
 
     /// <summary>Destroy the native TOAST UI instance and release JS references.</summary>

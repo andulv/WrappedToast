@@ -67,7 +67,12 @@
     <div class="flex-1 overflow-hidden mud-width-full" style="min-width:0;min-height:0;">
         <ToastUIEditor @ref="_editor" InitialStyle="display: none; width:100%; height:100%; overflow:auto;"
                        Options="EditorOptions" />
-        <div @ref="_viewerHost" class="mud-width-full" style="width:100%;height:100%;">
+        @* Hide the viewer HOST (not just its inner viewer) while editing.
+           The host keeps height:100% and would otherwise reserve ~745px of empty
+           space, making the scroll container taller than the viewport. On Markdown
+           focus the browser then scrolls the editor out of view (scrollTop jumps). *@
+        <div @ref="_viewerHost" class="mud-width-full"
+             style="width:100%;height:100%;@(_isEditing ? "display:none;" : "")">
             <ToastUIEditorViewer @ref="_viewer" InitialStyle="display: block; width:100%; height:100%; overflow:auto;"
                                  Options="ViewerOptions" />
         </div>

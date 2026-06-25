@@ -58,26 +58,26 @@
 
     private SampleMarkdownDefinition SelectedSample => SampleMarkdownContent.GetByKey(_selectedSampleKey);
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            ApplySelectedSample();
+            await ApplySelectedSampleAsync();
         }
-
-        return Task.CompletedTask;
     }
 
     private void OnSampleChanged(string value)
     {
         _selectedSampleKey = value;
-        ApplySelectedSample();
+        _ = ApplySelectedSampleAsync();
     }
 
-    private void ApplySelectedSample()
+    private async Task ApplySelectedSampleAsync()
     {
         var markdown = SelectedSample.Markdown;
-        _editor.SetMarkdown(markdown);
-        _viewer.SetMarkdown(markdown);
+        var editorTask = _editor.SetMarkdownAsync(markdown);
+        var viewerTask = _viewer.SetMarkdownAsync(markdown);
+        await Task.WhenAll(editorTask, viewerTask);
+
     }
 }

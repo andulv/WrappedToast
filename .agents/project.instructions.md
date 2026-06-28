@@ -10,7 +10,7 @@ Editor 3.2.2. It provides two thin Blazor wrappers for the native TOAST UI
 components plus one higher-level MudBlazor component built on top of them.
 
 Read first:
-- [catherder.instructions.md](catherder.instructions.md)
+- [catherder.project.instructions.md](catherder.project.instructions.md)
 - [../README.md](../README.md)
 
 ## Project Shape

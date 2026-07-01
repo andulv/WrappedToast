@@ -1,41 +1,68 @@
+const fontFamily = 'font-family:"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif';
+
+//Style added to document when formating for print.
 const toastuiStyles = '<style>'
-    + 'body{font-family:"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#424242;max-width:800px;margin:20px auto;padding:0 20px}'
+    + '@page{margin:1.5cm}'
+    + 'body{font-family:"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif;font-size:13px;line-height:1.4;color:#424242;max-width:800px;margin:20px auto;padding:0 20px}'
     + 'h1{font-size:24px;font-weight:700;color:#222;border-bottom:3px double #999;padding-bottom:7px;margin:52px 0 15px;line-height:28px}'
     + 'h2{font-size:22px;font-weight:700;color:#222;border-bottom:1px solid #dbdbdb;padding-bottom:7px;margin:20px 0 13px;line-height:23px}'
     + 'h3{font-size:20px;font-weight:700;color:#222;margin:18px 0 2px;line-height:18px}'
     + 'h4{font-size:18px;font-weight:700;color:#222;margin:18px 0 0;line-height:18px}'
-    + 'p{margin:4px 0 10px;color:#222;line-height:1.6}'
+    + 'p{margin:4px 0 10px;color:#222;line-height:1.4}'
+    + 'a{color:#0066cc;text-decoration:underline}'
+    + 'img{max-width:100%;height:auto}'
     + 'blockquote{color:#999;border-left:4px solid #e5e5e5;padding:0 16px;margin:14px 0}'
     + 'table{border-collapse:collapse;border:1px solid #ddd;margin:12px 0 14px;width:auto}'
     + 'th{background:#555;color:#fff;font-weight:300;padding:6px 14px 5px 12px;border:1px solid #ddd}'
     + 'td{padding:5px 14px 5px 12px;border:1px solid #ddd;color:#222}'
-    + 'pre{background:#f4f7f8;padding:18px;margin:2px 0 8px;color:#424242;font-family:Consolas,Courier,monospace;overflow-x:auto}'
-    + 'code{font-family:Consolas,Courier,monospace;font-size:13px;white-space:pre}'
-    + 'ol,ul{margin:6px 0 10px;padding-left:24px}li{list-style:none}'
+    + 'pre{background:#f4f7f8;padding:18px;margin:2px 0 8px;color:#424242;font-family:Consolas,Courier,monospace;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}'
+    + 'code{font-family:Consolas,Courier,monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}'
+    + 'ol{margin:6px 0 10px;padding-left:28px;list-style-type:decimal}'
+    + 'ul{margin:6px 0 10px;padding-left:28px;list-style-type:disc}'
+    + 'li{display:list-item;margin:2px 0;line-height:1.4}'
     + 'th,pre{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
     + '</style>';
 
-const fontFamily = 'font-family:"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif';
-
+// Inline styles applied to elements when copying HTML to clipboard.
 const inlineStyles = {
     h1: 'font-size:24px;font-weight:700;color:#222;border-bottom:3px double #999;padding-bottom:7px;margin:14px 0 15px;' + fontFamily + ';line-height:28px',
     h2: 'font-size:22px;font-weight:700;color:#222;border-bottom:1px solid #dbdbdb;padding-bottom:7px;margin:20px 0 13px;' + fontFamily + ';line-height:23px',
     h3: 'font-size:20px;font-weight:700;color:#222;margin:18px 0 2px;' + fontFamily + ';line-height:18px',
     h4: 'font-size:18px;font-weight:700;color:#222;margin:18px 0 0;' + fontFamily + ';line-height:18px',
-    p: 'margin:4px 0 10px;color:#222;line-height:1.6',
+    p: 'margin:4px 0 10px;color:#222;line-height:1.4',
     blockquote: 'color:#999;border-left:4px solid #e5e5e5;padding:0 16px;margin:14px 0',
     table: 'border-collapse:collapse;border:1px solid #ddd;margin:12px 0 14px;width:auto',
     th: 'background:#555;color:#fff;font-weight:300;padding:6px 14px 5px 12px;border:1px solid #ddd',
     td: 'padding:5px 14px 5px 12px;border:1px solid #ddd;color:#222',
-    pre: 'background:#f4f7f8;padding:18px;margin:2px 0 8px;color:#424242;font-family:Consolas,Courier,monospace;overflow-x:auto',
-    code: 'font-family:Consolas,Courier,monospace;font-size:13px;white-space:pre',
-    ol: 'margin:6px 0 10px;padding-left:24px;line-height:1.6',
-    ul: 'margin:6px 0 10px;padding-left:24px;line-height:1.6'
+    pre: 'background:#f4f7f8;padding:18px;margin:2px 0 8px;color:#424242;font-family:Consolas,Courier,monospace;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere',
+    code: 'font-family:Consolas,Courier,monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere',
+    ul: 'margin:6px 0 10px;padding-left:28px;line-height:1.2;list-style-type:disc',
+    ol: 'margin:6px 0 10px;padding-left:28px;line-height:1.2;list-style-type:decimal',
+    li: 'display:list-item;margin:2px 0;line-height:1.4'
 };
+
+function stripEditorAttributes(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    for (const el of tmp.querySelectorAll('[data-nodeid]')) {
+        el.removeAttribute('data-nodeid');
+    }
+    for (const li of tmp.querySelectorAll('li')) {
+        const paragraphs = li.querySelectorAll(':scope > p');
+        if (paragraphs.length === 1) {
+            const p = paragraphs[0];
+            while (p.firstChild) {
+                li.insertBefore(p.firstChild, p);
+            }
+            p.remove();
+        }
+    }
+    return tmp.innerHTML;
+}
 
 function applyInlineStyles(html) {
     const tmp = document.createElement('div');
-    tmp.innerHTML = html;
+    tmp.innerHTML = stripEditorAttributes(html);
 
     for (const [tag, style] of Object.entries(inlineStyles)) {
         for (const el of tmp.querySelectorAll(tag)) {
@@ -118,10 +145,11 @@ function applyInlineStyles(html) {
         wrapper.setAttribute('cellspacing', '0');
         wrapper.setAttribute('border', '0');
         wrapper.setAttribute('width', '100%');
+        wrapper.setAttribute('style', 'table-layout:fixed;width:100%;border:none');
         const tr = document.createElement('tr');
         const td = document.createElement('td');
         const code = pre.querySelector('code');
-        td.setAttribute('style', 'color:#424242;font-family:Consolas,Courier,monospace;padding:18px;white-space:pre');
+        td.setAttribute('style', 'color:#424242;font-family:Consolas,Courier,monospace;padding:18px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere');
         if (code) {
             const codeStyle = code.getAttribute('style') || '';
             td.innerHTML = '<code style="' + codeStyle + '">' + code.innerHTML + '</code>';
@@ -226,7 +254,7 @@ export function create() {
         },
 
         printContent: (instance, title) => {
-            const html = instance.getHTML();
+            const html = stripEditorAttributes(instance.getHTML());
             const win = window.open('', '_blank');
             if (!win) {
                 throw new Error('Please allow popups to print.');

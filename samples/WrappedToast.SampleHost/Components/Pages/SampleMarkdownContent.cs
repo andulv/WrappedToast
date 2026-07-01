@@ -4,9 +4,14 @@ namespace SampleHost.Components.Pages;
 
 internal sealed record SampleMarkdownDefinition(string Key, string Name, string Description, string Markdown);
 
+internal sealed record SampleOption(string Key, string Name, bool IsDataFile);
+
 internal static class SampleMarkdownContent
 {
-    internal static readonly IReadOnlyList<SampleMarkdownDefinition> Samples =
+    internal const string DataRelativePath = "../../data";
+    private const string MarkdownSearchPattern = "*.md";
+
+    internal static IReadOnlyList<SampleMarkdownDefinition> BuiltInSamples { get; } =
     [
         new(
             "basic",
@@ -90,11 +95,76 @@ internal static class SampleMarkdownContent
             BuildVeryLongDocument())
     ];
 
-    internal static string DefaultKey => Samples[0].Key;
+    internal static IReadOnlyList<SampleMarkdownDefinition> Samples => BuiltInSamples;
+
+    internal static string DefaultKey => BuiltInSamples[0].Key;
+
+    internal const string DataOptionPrefix = "data:";
+
+    internal static IReadOnlyList<SampleOption> BuildSampleOptions(string baseDirectory)
+    {
+        var options = new List<SampleOption>(
+            BuiltInSamples.Select(sample => new SampleOption(sample.Key, sample.Name, IsDataFile: false)));
+
+        options.AddRange(GetDataFileOptions(baseDirectory));
+        return options;
+    }
+
+    internal static IEnumerable<SampleOption> GetDataFileOptions(string baseDirectory)
+    {
+        var dataDirectory = GetDataDirectory(baseDirectory);
+        if (!Directory.Exists(dataDirectory))
+        {
+            return [];
+        }
+
+        return Directory.EnumerateFiles(dataDirectory, MarkdownSearchPattern, SearchOption.TopDirectoryOnly)
+            .Order(StringComparer.Ordinal)
+            .Select(filePath => Path.GetFileName(filePath))
+            .Select(fileName => new SampleOption(
+                Key: $"{DataOptionPrefix}{fileName}",
+                Name: Path.GetFileNameWithoutExtension(fileName),
+                IsDataFile: true));
+    }
+
+    internal static string ReadDataFile(string baseDirectory, string key)
+    {
+        if (!TryGetDataFileName(key, out var fileName))
+        {
+            return string.Empty;
+        }
+
+        var filePath = Path.Combine(GetDataDirectory(baseDirectory), fileName);
+        return File.Exists(filePath)
+            ? File.ReadAllText(filePath, Encoding.UTF8)
+            : string.Empty;
+    }
+
+    internal static bool IsDataOption(string key) => key.StartsWith(DataOptionPrefix, StringComparison.Ordinal);
+
+    internal static bool TryGetDataFileName(string key, out string fileName)
+    {
+        if (IsDataOption(key))
+        {
+            fileName = key[DataOptionPrefix.Length..];
+            return true;
+        }
+
+        fileName = string.Empty;
+        return false;
+    }
 
     internal static SampleMarkdownDefinition GetByKey(string key)
     {
-        return Samples.FirstOrDefault(sample => sample.Key == key) ?? Samples[0];
+        return BuiltInSamples.FirstOrDefault(sample => sample.Key == key) ?? BuiltInSamples[0];
+    }
+
+    private static string GetDataDirectory(string baseDirectory) =>
+        Path.GetFullPath(Path.Combine(baseDirectory, DataRelativePath));
+
+    internal static SampleMarkdownDefinition GetByKey(IReadOnlyList<SampleMarkdownDefinition> samples, string key)
+    {
+        return samples.FirstOrDefault(sample => sample.Key == key) ?? samples[0];
     }
 
     private static string BuildVeryLongDocument()

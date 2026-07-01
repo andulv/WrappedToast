@@ -1,4 +1,6 @@
 @page "/wrappedtoast-sample"
+@inject IWebHostEnvironment Env
+@using SampleHost.Components.Pages
 
 <PageTitle>WrappedToast - WrappedToast Sample</PageTitle>
 
@@ -13,9 +15,9 @@
                        Margin="Margin.Dense"
                        Class="mud-width-full"
                        Style="max-width:360px;">
-                @foreach (var sample in SampleMarkdownContent.Samples)
+                @foreach (var option in _options)
                 {
-                    <MudSelectItem T="string" Value="@sample.Key">@sample.Name</MudSelectItem>
+                    <MudSelectItem T="string" Value="@option.Key">@option.Name</MudSelectItem>
                 }
             </MudSelect>
 
@@ -65,25 +67,36 @@
 @code {
     private const long MaxUploadedMarkdownBytes = 1_048_576;
 
+    private IReadOnlyList<SampleOption> _options = [];
     private string _selectedSampleKey = SampleMarkdownContent.DefaultKey;
     private string _wrappedTitle = "sample.md";
-    private string _wrappedContent = SampleMarkdownContent.GetByKey(SampleMarkdownContent.DefaultKey).Markdown;
+    private string _wrappedContent = SampleMarkdownContent.BuiltInSamples[0].Markdown;
     private string _lastSaved = "(nothing saved yet)";
     private string _loadedTitle = "sample.md";
-    private string _loadedContent = SampleMarkdownContent.GetByKey(SampleMarkdownContent.DefaultKey).Markdown;
+    private string _loadedContent = SampleMarkdownContent.BuiltInSamples[0].Markdown;
     private bool _isUploadDragging;
-
-    private SampleMarkdownDefinition SelectedSample => SampleMarkdownContent.GetByKey(_selectedSampleKey);
 
     protected override void OnInitialized()
     {
+        _options = SampleMarkdownContent.BuildSampleOptions(Env.ContentRootPath);
         SyncLoadedDocument(_wrappedTitle, _wrappedContent);
     }
 
     private void OnSampleChanged(string value)
     {
         _selectedSampleKey = value;
-        SyncLoadedDocument($"{SelectedSample.Key}.md", SelectedSample.Markdown);
+
+        if (SampleMarkdownContent.IsDataOption(value))
+        {
+            var fileName = SampleMarkdownContent.TryGetDataFileName(value, out var name) ? name : value;
+            var markdown = SampleMarkdownContent.ReadDataFile(Env.ContentRootPath, value);
+            SyncLoadedDocument(fileName, markdown);
+        }
+        else
+        {
+            var sample = SampleMarkdownContent.GetByKey(value);
+            SyncLoadedDocument($"{sample.Key}.md", sample.Markdown);
+        }
     }
 
     private async Task OnUploadedMarkdownChanged(IBrowserFile? file)

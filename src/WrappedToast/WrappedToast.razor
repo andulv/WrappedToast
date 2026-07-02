@@ -1,8 +1,7 @@
 @inherits ComponentBase
 
-<div class="wrapped-toast-shell d-flex flex-column flex-1 gap-2 mud-width-full">
-    <MudStack Row="true" AlignItems="AlignItems.Stretch" Justify="Justify.SpaceBetween"
-              Class="flex-none wrapped-toast-toolbar">
+<div class="wrapped-toast-shell d-flex flex-column flex-1 mud-width-full gap-0">
+    <MudStack Row="true" AlignItems="AlignItems.Stretch" Justify="Justify.SpaceBetween" Class="flex-none px-2 pt-0 pb-0">
         @if (ShowTitle && !string.IsNullOrWhiteSpace(Title))
         {
             <MudText Typo="Typo.h6">@Title</MudText>

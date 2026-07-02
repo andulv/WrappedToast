@@ -5,6 +5,16 @@
     line-height: 1.25;
 }
 
+.frontmatter-root ::deep .frontmatter-panel.mud-expand-panel {
+    min-height: 0 !important;
+}
+
+.frontmatter-root ::deep .frontmatter-panel-header.mud-expand-panel-header {
+    min-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
 .frontmatter-table td {
     padding: 0.12rem 0.35rem;
     border-bottom: 1px solid var(--mud-palette-lines-default);

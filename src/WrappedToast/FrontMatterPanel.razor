@@ -2,8 +2,11 @@
 
 @if (FrontMatterRows.Count > 0)
 {
-    <MudExpansionPanels Dense="true" Elevation="0" Gutters="false" Outlined="true" Class="flex-none">
-        <MudExpansionPanel Dense="true" Gutters="false" Text="@($"Frontmatter ({FrontMatterRows.Count})")">
+    <div class="frontmatter-root">
+        <MudExpansionPanels Dense="true" Elevation="0" Gutters="false" Outlined="true" Class="flex-none my-0 pa-0">
+            <MudExpansionPanel Dense="true" Gutters="false" Class="frontmatter-panel my-0"
+                               Text="@($"Frontmatter ({FrontMatterRows.Count})")"
+                               HeaderClass="py-0 frontmatter-panel-header">
             @if (!IsEditing)
             {
                 <table class="frontmatter-table">
@@ -85,6 +88,7 @@
                     </tbody>
                 </table>
             }
-        </MudExpansionPanel>
-    </MudExpansionPanels>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </div>
 }

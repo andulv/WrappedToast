@@ -15,6 +15,12 @@ public partial class FrontMatterPanel
     /// <summary>Whether the panel is in edit mode.</summary>
     [Parameter] public bool IsEditing { get; set; }
 
+    /// <summary>
+    /// Raised when the user actually changes a row (edit, add, delete, restore).
+    /// Entering edit mode alone does not raise it.
+    /// </summary>
+    [Parameter] public EventCallback OnEdited { get; set; }
+
     // ── Internal edit state ────────────────────────────────────────────
 
     private List<EditableRow> _editRows = [];
@@ -68,6 +74,7 @@ public partial class FrontMatterPanel
     private void AddRow()
     {
         _editRows.Add(new EditableRow("", "", 0, false));
+        NotifyEdited();
     }
 
     private void DeleteRow(int index)
@@ -75,12 +82,16 @@ public partial class FrontMatterPanel
         if (index >= 0 && index < _editRows.Count)
         {
             _deletedIndices.Add(index);
+            NotifyEdited();
         }
     }
 
     private void RestoreRow(int index)
     {
-        _deletedIndices.Remove(index);
+        if (_deletedIndices.Remove(index))
+        {
+            NotifyEdited();
+        }
     }
 
     private void OnKeyChanged(int index, string key)
@@ -88,6 +99,7 @@ public partial class FrontMatterPanel
         if (index >= 0 && index < _editRows.Count)
         {
             _editRows[index].Key = key;
+            NotifyEdited();
         }
     }
 
@@ -96,8 +108,11 @@ public partial class FrontMatterPanel
         if (index >= 0 && index < _editRows.Count)
         {
             _editRows[index].Value = value;
+            NotifyEdited();
         }
     }
+
+    private void NotifyEdited() => _ = OnEdited.InvokeAsync();
 
     // ── Helpers ────────────────────────────────────────────────────────
 

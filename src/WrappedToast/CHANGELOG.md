@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Dirty tracking: sticky `IsDirty` + `OnDirtyChanged`, a warning-coloured Save button
+  while dirty, a `beforeunload` prompt while dirty, and `MarkDirty()` for hosts whose
+  save was rejected. Cleared on save, on Cancel, and on content load; undoing back to
+  the saved text does not clear it.
+- `ToastUIEditor.OnContentChanged` (+ `SetChangeSuspendedAsync`) and
+  `FrontMatterPanel.OnEdited` — the change signals dirty tracking is built on.
+- `SetContent(content, force: true)` to re-apply content that is byte-identical to what
+  was last applied (discard-my-edits reload).
+
+### Fixed
+
+- `OnParametersSet` no longer re-pushes `Content` into the editor on every parent
+  re-render, which discarded whatever the user had typed since the load.
+
 ## [0.1.0-preview.1]
 
 ### Added

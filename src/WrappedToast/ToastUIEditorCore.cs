@@ -27,6 +27,12 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
 
     protected virtual string JsModulePath => string.Empty;
 
+    /// <summary>
+    /// Called once, immediately after the JS instance exists. Derived components use
+    /// this to wire interop that needs the instance (no cross-component race).
+    /// </summary>
+    protected virtual Task OnInstanceReadyAsync() => Task.CompletedTask;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
@@ -34,12 +40,17 @@ public abstract class ToastUIEditorCore : ComponentBase, IAsyncDisposable
         _module = await JS.InvokeAsync<IJSObjectReference>("import", JsModulePath);
         _instance = await _module.InvokeAsync<IJSObjectReference>("initialize", new object?[] { ElementRef, Options });
 
+        // Flush content queued before the instance existed BEFORE notifying derived
+        // components: that push is a load, and a change listener wired first would
+        // report it as a user edit.
         if (_pendingMarkdown != null)
         {
             await SetMarkdownCoreAsync(_pendingMarkdown, _pendingMarkdownCursorToEnd);
             _pendingMarkdown = null;
             _pendingMarkdownCursorToEnd = true;
         }
+
+        await OnInstanceReadyAsync();
     }
 
     protected async Task SetMarkdownCoreAsync(string markdown, bool cursorToEnd = true)

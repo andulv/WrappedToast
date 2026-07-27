@@ -27,7 +27,25 @@ export async function initialize(editorElement, options) {
     const instance = getToastUiInstance(editorElement, editorInstances, 'editor');
     const toBlob = (str) => new Blob([new TextEncoder().encode(str)]);
 
+    // Change reporting. `attachChangeListener` wires a single TOAST UI `change`
+    // listener that reports to .NET; `setChangeSuspended` silences it around
+    // programmatic content loads (a load is not a user edit). Suspension has to
+    // live here: TOAST UI raises `change` synchronously inside setMarkdown, but
+    // the JS->.NET call is delivered asynchronously, so a .NET-side suppression
+    // window would race the callback.
+    let changeSuspended = false;
+    let changeRef = null;
+
     return {
+        attachChangeListener: (dotnetRef) => {
+            changeRef = dotnetRef;
+            instance.on('change', () => {
+                if (changeSuspended || !changeRef) return;
+                changeRef.invokeMethodAsync('NotifyContentChangedFromJs');
+            });
+        },
+        setChangeSuspended: (value) => { changeSuspended = !!value; },
+
         // Return the markdown as a Blob to avoid issues with large content and JS interop string size limits.
         getMarkdown: () => instance.getMarkdown(),
         getHTML: () => instance.getHTML(),
@@ -105,6 +123,9 @@ export async function initialize(editorElement, options) {
         removeHook: (type) => instance.removeHook(type),
         replaceWithWidget: (start, end, text) => instance.replaceWithWidget(start, end, text),
         reset: () => instance.reset(),
-        dispose: () => disposeToastUiInstance(editorElement, editorInstances)
+        dispose: () => {
+            changeRef = null;
+            disposeToastUiInstance(editorElement, editorInstances);
+        }
     };
 }

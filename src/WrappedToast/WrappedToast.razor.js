@@ -215,7 +215,24 @@ function isRelativeUrl(href) {
 }
 
 export function create() {
+    // Browser unload guard. Toggled from .NET on dirty transitions; `beforeunload` must
+    // be handled synchronously, so the handler lives here rather than in .NET.
+    let unloadHandler = null;
+
     return {
+        setUnsavedGuard: (enabled) => {
+            if (enabled && !unloadHandler) {
+                unloadHandler = (event) => {
+                    event.preventDefault();
+                    event.returnValue = '';
+                };
+                window.addEventListener('beforeunload', unloadHandler);
+            } else if (!enabled && unloadHandler) {
+                window.removeEventListener('beforeunload', unloadHandler);
+                unloadHandler = null;
+            }
+        },
+
         getInnerHtml: (hostElement) => hostElement?.innerHTML ?? '',
 
         rewriteRelativeUrls: (hostElement, linkBaseHref, imageBaseHref) => {

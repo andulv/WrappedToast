@@ -5,6 +5,51 @@
 @code {
     protected override string JsModulePath => "./_content/WrappedToast/ToastUIEditor.razor.js";
 
+    private DotNetObjectReference<ToastUIEditor>? _selfRef;
+
+    /// <summary>
+    /// Raised when the editor's content changes. Only user edits and programmatic
+    /// buffer edits reach this; content loads pushed while change reporting is
+    /// suspended (see <see cref="SetChangeSuspendedAsync"/>) do not.
+    /// </summary>
+    [Parameter] public EventCallback OnContentChanged { get; set; }
+
+    protected override async Task OnInstanceReadyAsync()
+    {
+        if (!OnContentChanged.HasDelegate)
+        {
+            return;
+        }
+
+        _selfRef = DotNetObjectReference.Create(this);
+        await InvokeVoidMethodAsync("attachChangeListener", _selfRef);
+    }
+
+    /// <summary>
+    /// Silence (or restore) <see cref="OnContentChanged"/> reporting. Wrap programmatic
+    /// content loads in this so a load is not reported as an edit. No-op before the JS
+    /// instance exists.
+    /// </summary>
+    public async Task SetChangeSuspendedAsync(bool suspended)
+    {
+        if (_instance is null)
+        {
+            return;
+        }
+
+        await InvokeVoidMethodAsync("setChangeSuspended", suspended);
+    }
+
+    [JSInvokable]
+    public Task NotifyContentChangedFromJs() => OnContentChanged.InvokeAsync();
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        _selfRef?.Dispose();
+        _selfRef = null;
+    }
+
     /// <summary>Set the markdown body shown by the editor.</summary>
     public async Task SetMarkdownAsync(string markdown, bool cursorToEnd = true)
     {

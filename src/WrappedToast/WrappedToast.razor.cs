@@ -29,6 +29,16 @@ public partial class WrappedToast : IAsyncDisposable
     [Parameter] public EventCallback<string> OnSave { get; set; }
 
     /// <summary>
+    /// True when the live buffer holds changes that have not been saved. Sticky: set on
+    /// the first change after a load, cleared on save, on Cancel, and on content load.
+    /// Undoing back to the saved text does not clear it.
+    /// </summary>
+    public bool IsDirty { get; private set; }
+
+    /// <summary>Raised on <see cref="IsDirty"/> transitions only.</summary>
+    [Parameter] public EventCallback<bool> OnDirtyChanged { get; set; }
+
+    /// <summary>
     /// Initial TOAST UI editor mode for the embedded editor surface.
     /// Supported values match TOAST UI Editor, such as <c>wysiwyg</c> and <c>markdown</c>.
     /// </summary>
@@ -58,6 +68,10 @@ public partial class WrappedToast : IAsyncDisposable
     private TextContentWithFrontMatter? _currentContent;
     private bool _currentContent_updated;
     private bool _viewerRewritePending;
+    // The last Content actually applied to the editor. Null until the first apply, so
+    // an initially empty document still gets parsed. Guards against re-pushing (and
+    // thereby clobbering) the live buffer on every parent re-render.
+    private string? _lastAppliedContent;
 
     // Frontmatter editing state
     private bool _isEditingFrontMatter;
@@ -93,18 +107,76 @@ public partial class WrappedToast : IAsyncDisposable
             ? "wysiwyg"
             : InitialEditType;
 
-        _currentContent = TextContentWithFrontMatter.Parse(Content);
+        // Only apply Content when it actually changed. Blazor calls OnParametersSet on
+        // every parent render, and applying re-pushes the text into the editor — which
+        // would discard whatever the user has typed since the load.
+        if (!string.Equals(Content, _lastAppliedContent, StringComparison.Ordinal))
+        {
+            ApplyContent(Content);
+        }
+    }
+
+    /// <summary>
+    /// Replace the editor/viewer content programmatically. Re-applying the same string is
+    /// a no-op unless <paramref name="force"/> is set; force is how a consumer discards the
+    /// live buffer and restores canonical text that happens to be byte-identical to the
+    /// text originally loaded.
+    /// </summary>
+    public void SetContent(string content, bool force = false)
+    {
+        if (force || !string.Equals(content, _lastAppliedContent, StringComparison.Ordinal))
+        {
+            ApplyContent(content);
+        }
+
+        StateHasChanged();
+    }
+
+    private void ApplyContent(string content)
+    {
+        _lastAppliedContent = content;
+        _currentContent = TextContentWithFrontMatter.Parse(content);
         _currentContent_updated = true;
         _viewerRewritePending = true;
     }
 
-    /// <summary>Replace the editor/viewer content programmatically.</summary>
-    public void SetContent(string content)
+    /// <summary>
+    /// Mark the buffer dirty. Consumers call this when a save they were asked to perform
+    /// was rejected, so the indicator and any unsaved-changes guards keep reflecting the
+    /// retained buffer.
+    /// </summary>
+    public void MarkDirty() => SetDirty(true);
+
+    /// <summary>
+    /// The single owner of dirty state: updates the flag, repaints, toggles the browser
+    /// unload guard, and notifies the consumer. Transitions only.
+    /// </summary>
+    private void SetDirty(bool dirty)
     {
-        _currentContent = TextContentWithFrontMatter.Parse(content);
-        _currentContent_updated = true;
-        _viewerRewritePending = true;
+        if (IsDirty == dirty)
+        {
+            return;
+        }
+
+        IsDirty = dirty;
         StateHasChanged();
+        _ = SetUnloadGuardAsync(dirty);
+        _ = OnDirtyChanged.InvokeAsync(dirty);
+    }
+
+    private async Task SetUnloadGuardAsync(bool enabled)
+    {
+        if (_wrapper is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _wrapper.InvokeVoidAsync("setUnsavedGuard", enabled);
+        }
+        catch (JSDisconnectedException) { }
+        catch (OperationCanceledException) { }
     }
 
     // ── Live-content read ──────────────────────────────────────────────
@@ -161,6 +233,7 @@ public partial class WrappedToast : IAsyncDisposable
         // Place cursor at start, then insert
         await _editor.SetSelectionAsync(start, start);
         await _editor.InsertTextAsync(text);
+        SetDirty(true);
     }
 
     /// <summary>
@@ -172,6 +245,7 @@ public partial class WrappedToast : IAsyncDisposable
         ThrowIfNotEditing();
         await EnsureMarkdownModeAsync();
         await _editor.ReplaceSelectionAsync(text, start, end);
+        SetDirty(true);
     }
 
     /// <summary>
@@ -212,6 +286,7 @@ public partial class WrappedToast : IAsyncDisposable
 
         var updated = content.Replace(find, replace, StringComparison.Ordinal);
         await _editor.SetMarkdownAsync(updated);
+        SetDirty(true);
         return count;
     }
 
@@ -231,6 +306,7 @@ public partial class WrappedToast : IAsyncDisposable
 
         var updated = string.Concat(content.AsSpan(0, idx), replace, content.AsSpan(idx + find.Length));
         await _editor.SetMarkdownAsync(updated);
+        SetDirty(true);
         return true;
     }
 
@@ -244,6 +320,7 @@ public partial class WrappedToast : IAsyncDisposable
 
         var content = await _editor.GetMarkdownAsync();
         await _editor.SetMarkdownAsync(content + text);
+        SetDirty(true);
     }
 
     private static int CountOccurrences(string haystack, string needle)
@@ -269,11 +346,22 @@ public partial class WrappedToast : IAsyncDisposable
 
         if (_currentContent_updated)
         {
-            if (_isEditing)
+            // A load is not an edit: suspend change reporting around the push, then clear.
+            await _editor.SetChangeSuspendedAsync(true);
+            try
             {
-                await _editor.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
+                if (_isEditing)
+                {
+                    await _editor.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
+                }
+                await _viewer.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
             }
-            await _viewer.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
+            finally
+            {
+                await _editor.SetChangeSuspendedAsync(false);
+            }
+
+            SetDirty(false);
             _currentContent_updated = false;
             _viewerRewritePending = true;
         }
@@ -285,12 +373,22 @@ public partial class WrappedToast : IAsyncDisposable
         }
     }
 
-    private void EnterEditMode()
+    private async Task EnterEditMode()
     {
         _isEditing = true;
-        _=_editor.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
-        _=_editor.SetElementStyleAsync("display", "block");
-        _=_viewer.SetElementStyleAsync("display", "none");
+
+        // Suspended: seeding the editor with the loaded text is not an edit.
+        await _editor.SetChangeSuspendedAsync(true);
+        try
+        {
+            await _editor.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
+            await _editor.SetElementStyleAsync("display", "block");
+            await _viewer.SetElementStyleAsync("display", "none");
+        }
+        finally
+        {
+            await _editor.SetChangeSuspendedAsync(false);
+        }
 
         // If frontmatter exists, enter frontmatter edit mode
         if (_currentContent?.FrontMatterRows.Count > 0)
@@ -302,6 +400,9 @@ public partial class WrappedToast : IAsyncDisposable
     private void ExitEditMode()
     {
         _isEditing = false;
+        // Leaving edit mode discards the buffer (Cancel) or follows a save; either way
+        // there is nothing unsaved to guard.
+        SetDirty(false);
         _=_editor.SetElementStyleAsync("display", "none");
         _=_viewer.SetElementStyleAsync("display", "block");
         ExitFrontMatterEditMode();
@@ -328,6 +429,7 @@ public partial class WrappedToast : IAsyncDisposable
             }
 
             await OnSave.InvokeAsync(_currentContent.ToMarkdownWithFrontMatter());
+            SetDirty(false);
             _currentContent_updated = true;
             _viewerRewritePending = true;
         }
@@ -409,7 +511,9 @@ public partial class WrappedToast : IAsyncDisposable
     private void EnterFrontMatterEditMode()
     {
         _isEditingFrontMatter = true;
-        // FrontMatterPanel clones rows internally when IsEditing becomes true
+        // FrontMatterPanel clones rows internally when IsEditing becomes true.
+        // Entering front-matter edit mode is not itself an edit; the panel reports actual
+        // row changes through OnEdited (wired to SetDirty in the markup).
     }
 
     private void ExitFrontMatterEditMode()
@@ -420,6 +524,13 @@ public partial class WrappedToast : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // Drop the browser unload guard before releasing the JS wrapper, or an unmount
+        // while dirty would leave the prompt installed for the rest of the session.
+        if (IsDirty)
+        {
+            await SetUnloadGuardAsync(false);
+        }
+
         if (_module == null && _wrapper == null)
         {
             return;

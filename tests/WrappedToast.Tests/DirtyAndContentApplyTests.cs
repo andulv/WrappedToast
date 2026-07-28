@@ -107,4 +107,21 @@ public class DirtyAndContentApplyTests : IAsyncDisposable
 
         Assert.False(cut.Instance.IsDirty);
     }
+
+    [Fact]
+    public async Task Failed_Save_Preserves_Dirty_State_And_Edit_Mode()
+    {
+        var cut = _ctx.Render<WrappedToast>(p => p
+            .Add(c => c.Content, "# hello")
+            .Add(c => c.OnSave, EventCallback.Factory.Create<string>(this, _ => throw new InvalidOperationException("save failed"))));
+        var enterEditMode = typeof(WrappedToast).GetMethod("EnterEditMode", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var saveAsync = typeof(WrappedToast).GetMethod("SaveAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        await cut.InvokeAsync(() => (Task)enterEditMode.Invoke(cut.Instance, null)!);
+        await cut.InvokeAsync(() => cut.Instance.MarkDirty());
+        await cut.InvokeAsync(() => (Task)saveAsync.Invoke(cut.Instance, null)!);
+
+        Assert.True(cut.Instance.IsDirty);
+        Assert.True(cut.Instance.IsEditing);
+    }
 }

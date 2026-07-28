@@ -432,11 +432,16 @@ public partial class WrappedToast : IAsyncDisposable
             SetDirty(false);
             _currentContent_updated = true;
             _viewerRewritePending = true;
+            ExitEditMode();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Save callback failed; retaining the unsaved editor buffer.");
+            Snackbar.Add("Couldn't save. Your edits are still available.", Severity.Error);
         }
         finally
         {
             _isSaving = false;
-            ExitEditMode();
             StateHasChanged();
         }
     }

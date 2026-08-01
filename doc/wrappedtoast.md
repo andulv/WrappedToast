@@ -12,6 +12,7 @@ Higher-level MudBlazor component combining editor/viewer with a toolbar and opti
 | `OnSave` | `EventCallback<string>` | — | Invoked on save with the full markdown including front matter |
 | `InitialEditType` | `string` | `"wysiwyg"` | Initial TOAST UI editor mode (`"wysiwyg"` or `"markdown"`) |
 | `ToolbarExtras` | `RenderFragment?` | `null` | Render fragment placed next to the Edit button (view mode only) |
+| `ToolbarOverride` | `RenderFragment?` | `null` | Replaces the complete default toolbar in its existing layout slot; takes precedence over `ToolbarExtras` |
 | `ViewerLinkBaseHref` | `string?` | `null` | Base href for resolving relative markdown links in the viewer |
 | `ViewerImageBaseHref` | `string?` | `null` | Base href for resolving relative markdown image sources in the viewer |
 

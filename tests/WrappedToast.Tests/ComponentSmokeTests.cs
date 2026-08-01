@@ -94,6 +94,27 @@ public class ComponentSmokeTests : IAsyncDisposable
     }
 
     [Fact]
+    public void WrappedToast_ToolbarOverride_Replaces_Default_Toolbar()
+    {
+        RenderFragment overrideToolbar = builder =>
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "id", "override-toolbar");
+            builder.AddContent(2, "External change");
+            builder.CloseElement();
+        };
+
+        var cut = _ctx.Render<WrappedToast>(p => p
+            .Add(c => c.Content, "body")
+            .Add(c => c.ToolbarOverride, overrideToolbar));
+
+        Assert.Contains("id=\"override-toolbar\"", cut.Markup);
+        Assert.Contains("External change", cut.Markup);
+        Assert.DoesNotContain(">Copy<", cut.Markup);
+        Assert.DoesNotContain(">Edit<", cut.Markup);
+    }
+
+    [Fact]
     public void WrappedToast_Renders_Copy_Button()
     {
         var cut = _ctx.Render<WrappedToast>(p => p

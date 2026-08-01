@@ -8,7 +8,7 @@ namespace WrappedToast;
 /// <summary>
 /// Combines a TOAST UI Editor and Viewer with a small MudBlazor toolbar (Edit / Save / Cancel)
 /// and optional front-matter table. Consumers can inject host-specific buttons via
-/// <see cref="ToolbarExtras"/>.
+/// <see cref="ToolbarExtras"/> or replace the toolbar through <see cref="ToolbarOverride"/>.
 /// </summary>
 public partial class WrappedToast : IAsyncDisposable
 {
@@ -50,6 +50,13 @@ public partial class WrappedToast : IAsyncDisposable
     /// the package to the host's navigation.
     /// </summary>
     [Parameter] public RenderFragment? ToolbarExtras { get; set; }
+
+    /// <summary>
+    /// Optional render fragment that replaces the complete default toolbar in its existing
+    /// layout slot. When set, the default title, actions, and <see cref="ToolbarExtras"/>
+    /// are not rendered.
+    /// </summary>
+    [Parameter] public RenderFragment? ToolbarOverride { get; set; }
 
     /// <summary>Base href used by the viewer to resolve relative markdown links.</summary>
     [Parameter] public string? ViewerLinkBaseHref { get; set; }

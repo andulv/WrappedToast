@@ -55,6 +55,7 @@ TOAST UI Editor assets are bundled and automatically loaded by components.
 
 - Optional YAML-style `---` front-matter parsed, displayed, and edited inline
 - `ToolbarExtras` `RenderFragment` to inject host-specific buttons without coupling the package to host navigation
+- `ToolbarOverride` `RenderFragment` to replace the full toolbar in its existing layout slot for host-owned states
 - Copy-as-markdown and copy-as-HTML toolbar actions, with clipboard failures surfaced through a `MudBlazor.ISnackbar`
 - Programmatic API on WrappedToast: insert, replace, find-and-replace, cursor movement
 - Light and dark theme support
@@ -116,6 +117,8 @@ Include MudBlazor providers in the host layout:
     </ToolbarExtras>
 </WrappedToast>
 ```
+
+`ToolbarOverride` replaces the complete default toolbar, including `ToolbarExtras`, in the same layout position. Use it for a host-owned state that must not stack another toolbar above the editor.
 
 `WrappedToast` parses optional `---` YAML-style front matter from `Content` and displays it as a table above the editor. The full markdown (front matter + body) is delivered back through `OnSave`.
 

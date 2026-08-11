@@ -2,8 +2,19 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
+using System.Threading;
 
 namespace WrappedToast;
+
+/// <summary>Editor save lifecycle status surfaced to hosts for indicators.</summary>
+public enum SaveStatus
+{
+    Idle,
+    Pending,
+    Saving,
+    Saved,
+    Failed,
+}
 
 /// <summary>
 /// Combines a TOAST UI Editor and Viewer with a small MudBlazor toolbar (Edit / Save / Cancel)
@@ -29,11 +40,29 @@ public partial class WrappedToast : IAsyncDisposable
     [Parameter] public EventCallback<string> OnSave { get; set; }
 
     /// <summary>
+    /// Enables automatic debounced saves while editing. Off by default; hosts (e.g. FilespaceView)
+    /// opt in for editable Markdown files.
+    /// </summary>
+    [Parameter] public bool AutosaveEnabled { get; set; }
+
+    /// <summary>Delay after the last change before an automatic save fires.</summary>
+    [Parameter] public TimeSpan AutosaveDebounce { get; set; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>Maximum interval a buffer may stay unsaved under continuous editing before a forced save.</summary>
+    [Parameter] public TimeSpan AutosaveMaxWait { get; set; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>Raised when <see cref="SaveStatus"/> changes, so hosts can render save indicators.</summary>
+    [Parameter] public EventCallback<SaveStatus> OnSaveStatusChanged { get; set; }
+
+    /// <summary>
     /// True when the live buffer holds changes that have not been saved. Sticky: set on
     /// the first change after a load, cleared on save, on Cancel, and on content load.
     /// Undoing back to the saved text does not clear it.
     /// </summary>
     public bool IsDirty { get; private set; }
+
+    /// <summary>Current save lifecycle status (see <see cref="SaveStatus"/>).</summary>
+    public SaveStatus SaveStatus => _saveStatus;
 
     /// <summary>Raised on <see cref="IsDirty"/> transitions only.</summary>
     [Parameter] public EventCallback<bool> OnDirtyChanged { get; set; }
@@ -82,6 +111,14 @@ public partial class WrappedToast : IAsyncDisposable
 
     // Frontmatter editing state
     private bool _isEditingFrontMatter;
+
+    // ── Autosave coordinator ────────────────────────────────────────
+    private SaveStatus _saveStatus = SaveStatus.Idle;
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
+    private Timer? _autosaveDebounceTimer;
+    private Timer? _autosaveMaxWaitTimer;
+    private DateTime _autosaveDirtySinceUtc = DateTime.MinValue;
+    private TaskCompletionSource? _inFlightSave;
 
     /// <summary>Default options forwarded to <see cref="ToastUIEditorViewer"/>.</summary>
     public Dictionary<string, string> ViewerOptions { get; }
@@ -152,7 +189,14 @@ public partial class WrappedToast : IAsyncDisposable
     /// was rejected, so the indicator and any unsaved-changes guards keep reflecting the
     /// retained buffer.
     /// </summary>
-    public void MarkDirty() => SetDirty(true);
+    public void MarkDirty()
+    {
+        SetDirty(true);
+        if (_isEditing && AutosaveEnabled)
+        {
+            ArmAutosave();
+        }
+    }
 
     /// <summary>
     /// The single owner of dirty state: updates the flag, repaints, toggles the browser
@@ -166,6 +210,13 @@ public partial class WrappedToast : IAsyncDisposable
         }
 
         IsDirty = dirty;
+        if (!dirty)
+        {
+            // Buffer matches durable storage: cancel any pending autosave and reset the
+            // max-wait streak so the next edit starts a fresh window.
+            _autosaveDirtySinceUtc = DateTime.MinValue;
+            CancelAutosaveTimers();
+        }
         StateHasChanged();
         _ = SetUnloadGuardAsync(dirty);
         _ = OnDirtyChanged.InvokeAsync(dirty);
@@ -422,44 +473,206 @@ public partial class WrappedToast : IAsyncDisposable
         ExitFrontMatterEditMode();
     }
 
-    private async Task SaveAsync()
+    private Task SaveAsync() => SaveAsyncInternal(exitFrontMatterEdit: true, isManual: true);
+
+    /// <summary>
+    /// Flush any pending/in-flight automatic save and persist the current buffer if dirty.
+    /// Used by hosts before file switch, navigation, and agent execution. Never throws on
+    /// save failure or stale rejection — the status reflects the outcome and the caller
+    /// decides the fallback.
+    /// </summary>
+    public async Task FlushAsync(CancellationToken cancellationToken = default)
+    {
+        CancelAutosaveTimers();
+
+        var inflight = _inFlightSave;
+        if (inflight is not null)
+        {
+            try { await inflight.Task.WaitAsync(cancellationToken); }
+            catch (OperationCanceledException) { }
+        }
+
+        if (IsDirty && _isEditing)
+        {
+            await SaveAsyncInternal(exitFrontMatterEdit: false, isManual: false, cancellationToken);
+        }
+    }
+
+    private async Task SaveAsyncInternal(bool exitFrontMatterEdit, bool isManual, CancellationToken cancellationToken = default)
     {
         if (_currentContent == null)
         {
             throw new InvalidOperationException("No content to save");
         }
 
-        _isSaving = true;
+        if (isManual)
+        {
+            _isSaving = true;
+        }
         try
         {
-            _currentContent.Body = await GetLiveContentAsync();
+            await ExecuteSaveAsync(exitFrontMatterEdit, cancellationToken);
+        }
+        finally
+        {
+            if (isManual)
+            {
+                _isSaving = false;
+            }
+            StateHasChanged();
+        }
+    }
 
-            // If frontmatter was being edited, pull the edited rows from the panel
+    /// <summary>
+    /// The single serialized persistence path shared by manual Save, autosave, and flush.
+    /// Acquires the save gate so only one save runs at a time; snapshots the live buffer at
+    /// run time (so an earlier save can never overwrite a newer buffer); clears dirty on
+    /// success; keeps the buffer + edit mode on failure.
+    /// </summary>
+    private async Task ExecuteSaveAsync(bool exitFrontMatterEdit, CancellationToken cancellationToken)
+    {
+        await _saveGate.WaitAsync(cancellationToken);
+        ArgumentNullException.ThrowIfNull(_currentContent);
+        var inflight = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inFlightSave = inflight;
+        try
+        {
+            SetSaveStatus(SaveStatus.Saving);
+
+            _currentContent.Body = await GetLiveContentAsync();
             if (_isEditingFrontMatter)
             {
                 var editedRows = _frontMatterPanel.GetEditedRows();
                 _currentContent = TextContentWithFrontMatter.FromParts(editedRows, _currentContent.Body);
-                ExitFrontMatterEditMode();
+                if (exitFrontMatterEdit)
+                {
+                    ExitFrontMatterEditMode();
+                }
             }
 
             await OnSave.InvokeAsync(_currentContent.ToMarkdownWithFrontMatter());
             SetDirty(false);
             _currentContent_updated = true;
             _viewerRewritePending = true;
+            SetSaveStatus(SaveStatus.Saved);
             // Stay in edit mode after a successful save (manual or automatic): saving must
             // not end editing. The user leaves the editor explicitly via Cancel.
         }
+        catch (OperationCanceledException)
+        {
+            SetSaveStatus(SaveStatus.Failed);
+            throw;
+        }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Save callback failed; retaining the unsaved editor buffer.");
+            Logger.LogWarning(ex, "Save failed; retaining the unsaved editor buffer.");
             Snackbar.Add("Couldn't save. Your edits are still available.", Severity.Error);
+            SetSaveStatus(SaveStatus.Failed);
         }
         finally
         {
-            _isSaving = false;
-            StateHasChanged();
+            _saveGate.Release();
+            _inFlightSave = null;
+            inflight.TrySetResult();
         }
     }
+
+    // ── Autosave scheduling ─────────────────────────────────────────
+
+    private void ArmAutosave()
+    {
+        if (AutosaveDebounce <= TimeSpan.Zero && AutosaveMaxWait <= TimeSpan.Zero)
+        {
+            _ = TriggerAutosaveDueAsync();
+            return;
+        }
+
+        if (_autosaveDirtySinceUtc == DateTime.MinValue)
+        {
+            _autosaveDirtySinceUtc = DateTime.UtcNow;
+        }
+
+        if (_saveStatus != SaveStatus.Saving)
+        {
+            SetSaveStatus(SaveStatus.Pending);
+        }
+
+        _autosaveDebounceTimer ??= new Timer(_ => _ = TriggerAutosaveDueAsync(), null, Timeout.Infinite, Timeout.Infinite);
+        _autosaveMaxWaitTimer ??= new Timer(_ => _ = TriggerAutosaveDueAsync(), null, Timeout.Infinite, Timeout.Infinite);
+
+        if (AutosaveDebounce > TimeSpan.Zero)
+        {
+            _autosaveDebounceTimer.Change(AutosaveDebounce, Timeout.InfiniteTimeSpan);
+        }
+
+        if (AutosaveMaxWait > TimeSpan.Zero)
+        {
+            var remaining = AutosaveMaxWait - (DateTime.UtcNow - _autosaveDirtySinceUtc);
+            if (remaining <= TimeSpan.Zero)
+            {
+                _ = TriggerAutosaveDueAsync();
+            }
+            else
+            {
+                _autosaveMaxWaitTimer.Change(remaining, Timeout.InfiniteTimeSpan);
+            }
+        }
+    }
+
+    private void CancelAutosaveTimers()
+    {
+        _autosaveDebounceTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        _autosaveMaxWaitTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+    }
+
+    private async Task TriggerAutosaveDueAsync()
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                if (!_isEditing || !IsDirty || !AutosaveEnabled)
+                {
+                    return;
+                }
+
+                CancelAutosaveTimers();
+                await SaveAsyncInternal(exitFrontMatterEdit: false, isManual: false);
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Autosave trigger failed.");
+        }
+    }
+
+    private void SetSaveStatus(SaveStatus status)
+    {
+        if (_saveStatus == status)
+        {
+            return;
+        }
+
+        _saveStatus = status;
+        StateHasChanged();
+        _ = OnSaveStatusChanged.InvokeAsync(status);
+    }
+
+    private static string SaveStatusText(SaveStatus status) => status switch
+    {
+        SaveStatus.Pending => "Saving…",
+        SaveStatus.Saving => "Saving…",
+        SaveStatus.Saved => "Saved",
+        SaveStatus.Failed => "Save failed",
+        _ => "",
+    };
+
+    private static Color SaveStatusColor(SaveStatus status) => status switch
+    {
+        SaveStatus.Saved => Color.Success,
+        SaveStatus.Failed => Color.Error,
+        _ => Color.Info,
+    };
 
     private async Task CopyContentToClipboardAsync()
     {
@@ -544,6 +757,25 @@ public partial class WrappedToast : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // Stop scheduled autosaves and dispose the coordinator timers.
+        CancelAutosaveTimers();
+        _autosaveDebounceTimer?.Dispose();
+        _autosaveMaxWaitTimer?.Dispose();
+        _autosaveDebounceTimer = null;
+        _autosaveMaxWaitTimer = null;
+
+        // Best-effort flush: an abrupt tab/page close cannot reliably complete async work,
+        // but if the component is disposed while still mounted (e.g. in-app navigation) we
+        // try once. Fire-and-forget; never throw from dispose.
+        if (IsDirty && _isEditing && _currentContent != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try { await SaveAsyncInternal(exitFrontMatterEdit: false, isManual: false); }
+                catch { /* best-effort */ }
+            });
+        }
+
         // Drop the browser unload guard before releasing the JS wrapper, or an unmount
         // while dirty would leave the prompt installed for the rest of the session.
         if (IsDirty)

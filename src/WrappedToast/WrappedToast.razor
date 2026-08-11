@@ -52,6 +52,12 @@
                                StartIcon="@Icons.Material.Filled.Cancel" OnClick="ExitEditMode" Disabled="_isSaving">
                         Cancel
                     </MudButton>
+                    @if (_saveStatus != SaveStatus.Idle)
+                    {
+                        <MudText Typo="Typo.body2" Color="@SaveStatusColor(_saveStatus)" Class="ms-2 align-self-center">
+                            @SaveStatusText(_saveStatus)
+                        </MudText>
+                    }
                 }
                 else
                 {

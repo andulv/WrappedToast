@@ -156,14 +156,4 @@ public class DirtyAndContentApplyTests : IAsyncDisposable
         Assert.Single(savedContent);
         Assert.Contains("# hello (edited)", savedContent[0]);
     }
-
-    /// <summary>
-    /// Subclass that replaces the JS-backed editor buffer read with a controllable
-    /// string, so save/autosave behavior can be exercised without JavaScript.
-    /// </summary>
-    private sealed class TestableWrappedToast : WrappedToast
-    {
-        public string LiveBody { get; set; } = "";
-        protected override Task<string> ReadLiveBodyAsync() => Task.FromResult(LiveBody);
-    }
 }

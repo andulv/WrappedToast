@@ -195,8 +195,15 @@ public partial class WrappedToast : IAsyncDisposable
     public async Task<string> GetLiveContentAsync()
     {
         if (!_isEditing) return _currentContent?.Body ?? string.Empty;
-        return await _editor.GetMarkdownAsync();
+        return await ReadLiveBodyAsync();
     }
+
+    /// <summary>
+    /// Reads the live editor body. Virtual so tests can substitute a non-JS source;
+    /// production reads from the TOAST UI editor. This is the single buffer-read seam
+    /// shared by manual save, autosave, and the host flush.
+    /// </summary>
+    protected virtual Task<string> ReadLiveBodyAsync() => _editor.GetMarkdownAsync();
 
     /// <summary>Get the full live content including frontmatter.</summary>
     public async Task<string> GetLiveFullContentAsync()
@@ -425,7 +432,7 @@ public partial class WrappedToast : IAsyncDisposable
         _isSaving = true;
         try
         {
-            _currentContent.Body = await _editor.GetMarkdownAsync();
+            _currentContent.Body = await GetLiveContentAsync();
 
             // If frontmatter was being edited, pull the edited rows from the panel
             if (_isEditingFrontMatter)
@@ -439,7 +446,8 @@ public partial class WrappedToast : IAsyncDisposable
             SetDirty(false);
             _currentContent_updated = true;
             _viewerRewritePending = true;
-            ExitEditMode();
+            // Stay in edit mode after a successful save (manual or automatic): saving must
+            // not end editing. The user leaves the editor explicitly via Cancel.
         }
         catch (Exception ex)
         {

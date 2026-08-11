@@ -124,4 +124,46 @@ public class DirtyAndContentApplyTests : IAsyncDisposable
         Assert.True(cut.Instance.IsDirty);
         Assert.True(cut.Instance.IsEditing);
     }
+
+    [Fact]
+    public async Task Successful_Save_Keeps_Edit_Mode_Open()
+    {
+        // Contract: a successful save (manual today, automatic once autosave lands) must
+        // NOT leave edit mode. Saving persists and clears dirty, but the user stays in the
+        // editor. Pins the regression where SaveAsync called ExitEditMode() on success.
+        // Uses a testable subclass so the buffer read does not depend on JS interop.
+        var savedContent = new List<string>();
+        var cut = _ctx.Render<TestableWrappedToast>(p => p
+            .Add(c => c.Content, "# hello")
+            .Add(c => c.OnSave, EventCallback.Factory.Create<string>(this, content =>
+            {
+                savedContent.Add(content);
+                return Task.CompletedTask;
+            })));
+        cut.Instance.LiveBody = "# hello (edited)";
+        var enterEditMode = typeof(WrappedToast).GetMethod("EnterEditMode", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var saveAsync = typeof(WrappedToast).GetMethod("SaveAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        await cut.InvokeAsync(() => (Task)enterEditMode.Invoke(cut.Instance, null)!);
+        await cut.InvokeAsync(() => cut.Instance.MarkDirty());
+        Assert.True(cut.Instance.IsEditing);
+        Assert.True(cut.Instance.IsDirty);
+
+        await cut.InvokeAsync(() => (Task)saveAsync.Invoke(cut.Instance, null)!);
+
+        Assert.True(cut.Instance.IsEditing);
+        Assert.False(cut.Instance.IsDirty);
+        Assert.Single(savedContent);
+        Assert.Contains("# hello (edited)", savedContent[0]);
+    }
+
+    /// <summary>
+    /// Subclass that replaces the JS-backed editor buffer read with a controllable
+    /// string, so save/autosave behavior can be exercised without JavaScript.
+    /// </summary>
+    private sealed class TestableWrappedToast : WrappedToast
+    {
+        public string LiveBody { get; set; } = "";
+        protected override Task<string> ReadLiveBodyAsync() => Task.FromResult(LiveBody);
+    }
 }

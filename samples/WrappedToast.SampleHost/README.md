@@ -6,7 +6,7 @@ Standalone Blazor Server sample app that demonstrates **WrappedToast** functiona
 
 - `<ToastUIEditor>` rendered standalone with a "Read markdown" button that calls `GetMarkdownAsync()` and reports the length.
 - `<ToastUIEditorViewer>` rendered standalone with a button that loads a sample markdown body via `SetMarkdown(...)`.
-- `<WrappedToast>` round-trip: parses YAML-style front matter into a header table, allows Edit / Save / Cancel, surfaces the saved markdown back through `OnSave`, and renders a host-supplied "Reset sample" button via the `ToolbarExtras` `RenderFragment`.
+- `<WrappedToast>` round-trip: parses YAML-style front matter into a header table, allows Edit / Save / Cancel, surfaces immutable save requests through `OnSaveRequested`, explicitly reloads sample documents with `LoadExternalContent`, and renders a host-supplied "Reset sample" button via the `ToolbarExtras` `RenderFragment`.
 - Light/dark theme toggle in the app bar — exercises both `toastui-editor.min.css` and `theme/toastui-editor-dark.min.css`.
 
 ## Running the sample

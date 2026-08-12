@@ -39,9 +39,10 @@
 
         <MudItem xs="12">
             <MudPaper Class="pa-3 d-flex flex-column" Style="height:520px;">
-                <WrappedToast Title="@_wrappedTitle"
-                              Content="@_wrappedContent"
-                              OnSave="OnWrappedSaveAsync">
+                <WrappedToast @ref="_wrappedToast"
+                              Title="@_wrappedTitle"
+                              InitialContent="@_wrappedContent"
+                              OnSaveRequested="OnWrappedSaveAsync">
                     <ToolbarExtras>
                         <MudButton Variant="Variant.Outlined" Color="Color.Default"
                                    StartIcon="@Icons.Material.Filled.Refresh"
@@ -65,6 +66,7 @@
 @code {
     private ToastUIEditor _editor = null!;
     private ToastUIEditorViewer _viewer = null!;
+    private global::WrappedToast.WrappedToast? _wrappedToast;
 
     private static readonly string DefaultMarkdown = SampleMarkdownContent.GetByKey(SampleMarkdownContent.DefaultKey).Markdown;
 
@@ -84,15 +86,17 @@
         await _viewer.SetMarkdownAsync(DefaultMarkdown);
     }
 
-    private Task OnWrappedSaveAsync(string fullMarkdown)
+    private Task OnWrappedSaveAsync(WrappedToastSaveRequest request)
     {
-        _lastSaved = fullMarkdown;
+        _wrappedContent = request.Content;
+        _lastSaved = request.Content;
         return Task.CompletedTask;
     }
 
     private void ResetWrappedSample()
     {
         _wrappedContent = DefaultMarkdown;
+        _wrappedToast?.LoadExternalContent(DefaultMarkdown);
         StateHasChanged();
     }
 }

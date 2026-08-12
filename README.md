@@ -106,8 +106,8 @@ Include MudBlazor providers in the host layout:
 @using WrappedToast
 
 <WrappedToast Title="@FilePath"
-              Content="@FileContent"
-              OnSave="HandleSaveAsync">
+              InitialContent="@FileContent"
+              OnSaveRequested="HandleSaveAsync">
     <ToolbarExtras>
         <MudButton Variant="Variant.Outlined"
                    StartIcon="@Icons.Material.Filled.Print"
@@ -120,12 +120,12 @@ Include MudBlazor providers in the host layout:
 
 `ToolbarOverride` replaces the complete default toolbar, including `ToolbarExtras`, in the same layout position. Use it for a host-owned state that must not stack another toolbar above the editor.
 
-`WrappedToast` parses optional `---` YAML-style front matter from `Content` and displays it as a table above the editor. The full markdown (front matter + body) is delivered back through `OnSave`.
+`WrappedToast` parses optional `---` YAML-style front matter from `InitialContent` and displays it as a table above the editor. The full markdown is delivered in an immutable save request. Updating the host's stored copy after a successful save does not reload the editor; use `LoadExternalContent(...)` only for an intentional discard/reload.
 
 ```csharp
-private Task HandleSaveAsync(string markdown)
+private Task HandleSaveAsync(WrappedToastSaveRequest request)
 {
-    // persist the full markdown (including front matter) here
+    // persist request.Content (including front matter) here
     return Task.CompletedTask;
 }
 ```

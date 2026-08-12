@@ -43,9 +43,10 @@
         </MudStack>
 
         <div class="sample-min-height-0 d-flex flex-column flex-1 overflow-hidden">
-            <WrappedToast Title="@_wrappedTitle"
-                          Content="@_wrappedContent"
-                          OnSave="OnWrappedSaveAsync">
+            <WrappedToast @ref="_wrappedToast"
+                          Title="@_wrappedTitle"
+                          InitialContent="@_wrappedContent"
+                          OnSaveRequested="OnWrappedSaveAsync">
                 <ToolbarExtras>
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Default"
@@ -67,6 +68,7 @@
 @code {
     private const long MaxUploadedMarkdownBytes = 1_048_576;
 
+    private global::WrappedToast.WrappedToast? _wrappedToast;
     private IReadOnlyList<SampleOption> _options = [];
     private string _selectedSampleKey = SampleMarkdownContent.DefaultKey;
     private string _wrappedTitle = "sample.md";
@@ -119,9 +121,12 @@
         _isUploadDragging = isDragging;
     }
 
-    private Task OnWrappedSaveAsync(string fullMarkdown)
+    private Task OnWrappedSaveAsync(WrappedToastSaveRequest request)
     {
-        _lastSaved = fullMarkdown;
+        // Mirror a real host persisting its own copy. This parent render must not reload the
+        // active WrappedToast session; only LoadExternalContent is allowed to do that.
+        _wrappedContent = request.Content;
+        _lastSaved = request.Content;
         return Task.CompletedTask;
     }
 
@@ -129,6 +134,7 @@
     {
         _wrappedTitle = _loadedTitle;
         _wrappedContent = _loadedContent;
+        _wrappedToast?.LoadExternalContent(_loadedContent);
         StateHasChanged();
     }
 
@@ -138,6 +144,7 @@
         _loadedContent = markdown;
         _wrappedTitle = title;
         _wrappedContent = markdown;
+        _wrappedToast?.LoadExternalContent(markdown);
     }
 
     private string GetUploadButtonClass()

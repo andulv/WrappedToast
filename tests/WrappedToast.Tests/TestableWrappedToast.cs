@@ -10,5 +10,8 @@ internal sealed class TestableWrappedToast : WrappedToast
     /// <summary>Content returned by the overridden editor read.</summary>
     public string LiveBody { get; set; } = "";
 
+    /// <summary>Simulates the editor's user-edit callback without JavaScript.</summary>
+    public void SimulateUserEdit() => RecordEdit();
+
     protected override Task<string> ReadLiveBodyAsync() => Task.FromResult(LiveBody);
 }

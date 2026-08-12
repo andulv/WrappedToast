@@ -6,21 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- `InitialContent` replaces `Content`. It seeds a new editor session once; parent renders do
+  not replace the live TOAST UI document. Use `LoadExternalContent(content)` for an intentional
+  discard/reload.
+- `OnSaveRequested` replaces `OnSave`. It receives `WrappedToastSaveRequest`, an immutable
+  content/revision/origin snapshot. A successful callback acknowledges that revision; a failure
+  retains the buffer and reports `SaveStatus.Failed`.
+- Dirty tracking now has a monotonic revision. A save that finishes after another edit leaves the
+  newer edit dirty instead of falsely declaring it saved.
+- Manual saves restore editor focus after the persistence request completes. Normal save
+  acknowledgements no longer call `setMarkdown`, preserving cursor, scroll, undo, and editor DOM
+  state.
+- Disposal no longer starts an unobservable background save. Hosts must flush at known navigation
+  boundaries; disposal logs a dirty session instead.
+
 ### Added
 
-- Dirty tracking: sticky `IsDirty` + `OnDirtyChanged`, a warning-coloured Save button
-  while dirty, a `beforeunload` prompt while dirty, and `MarkDirty()` for hosts whose
-  save was rejected. Cleared on save, on Cancel, and on content load; undoing back to
-  the saved text does not clear it.
-- `ToastUIEditor.OnContentChanged` (+ `SetChangeSuspendedAsync`) and
-  `FrontMatterPanel.OnEdited` — the change signals dirty tracking is built on.
-- `SetContent(content, force: true)` to re-apply content that is byte-identical to what
-  was last applied (discard-my-edits reload).
-
-### Fixed
-
-- `OnParametersSet` no longer re-pushes `Content` into the editor on every parent
-  re-render, which discarded whatever the user had typed since the load.
+- `WrappedToastSaveOrigin` (`Manual`, `Autosave`, `Flush`) and
+  `WrappedToastSaveRequest` for explicit host persistence contracts.
+- `FlushAsync` now returns whether persistence succeeded; cancellation continues to propagate.
 
 ## [0.1.0-preview.1]
 

@@ -52,7 +52,7 @@ public class ComponentSmokeTests : IAsyncDisposable
     {
         var cut = _ctx.Render<WrappedToast>(p => p
             .Add(c => c.Title, "hello.md")
-            .Add(c => c.Content, "# Hello\n\nbody"));
+            .Add(c => c.InitialContent, "# Hello\n\nbody"));
 
         Assert.Contains("hello.md", cut.Markup);
         Assert.Contains("Edit", cut.Markup);
@@ -65,7 +65,7 @@ public class ComponentSmokeTests : IAsyncDisposable
 
         var cut = _ctx.Render<WrappedToast>(p => p
             .Add(c => c.Title, "doc.md")
-            .Add(c => c.Content, content));
+            .Add(c => c.InitialContent, content));
 
         Assert.Contains("title", cut.Markup);
         Assert.Contains("My Doc", cut.Markup);
@@ -86,7 +86,7 @@ public class ComponentSmokeTests : IAsyncDisposable
 
         var cut = _ctx.Render<WrappedToast>(p => p
             .Add(c => c.Title, "x.md")
-            .Add(c => c.Content, "body")
+            .Add(c => c.InitialContent, "body")
             .Add(c => c.ToolbarExtras, extras));
 
         Assert.Contains("id=\"extra-btn\"", cut.Markup);
@@ -105,7 +105,7 @@ public class ComponentSmokeTests : IAsyncDisposable
         };
 
         var cut = _ctx.Render<WrappedToast>(p => p
-            .Add(c => c.Content, "body")
+            .Add(c => c.InitialContent, "body")
             .Add(c => c.ToolbarOverride, overrideToolbar));
 
         Assert.Contains("id=\"override-toolbar\"", cut.Markup);
@@ -118,7 +118,7 @@ public class ComponentSmokeTests : IAsyncDisposable
     public void WrappedToast_Renders_Copy_Button()
     {
         var cut = _ctx.Render<WrappedToast>(p => p
-            .Add(c => c.Content, "body"));
+            .Add(c => c.InitialContent, "body"));
 
         Assert.Contains("Copy", cut.Markup);
     }
@@ -127,7 +127,7 @@ public class ComponentSmokeTests : IAsyncDisposable
     public void WrappedToast_Defaults_Editor_To_Wysiwyg_Mode()
     {
         var cut = _ctx.Render<WrappedToast>(p => p
-            .Add(c => c.Content, "body"));
+            .Add(c => c.InitialContent, "body"));
 
         var editorOptions = ReadOptions(cut.Instance, "EditorOptions");
 
@@ -138,7 +138,7 @@ public class ComponentSmokeTests : IAsyncDisposable
     public void WrappedToast_Allows_InitialEditType_Override()
     {
         var cut = _ctx.Render<WrappedToast>(p => p
-            .Add(c => c.Content, "body")
+            .Add(c => c.InitialContent, "body")
             .Add(c => c.InitialEditType, "markdown"));
 
         var editorOptions = ReadOptions(cut.Instance, "EditorOptions");

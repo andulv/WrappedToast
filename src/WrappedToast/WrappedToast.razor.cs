@@ -33,11 +33,19 @@ public partial class WrappedToast : IAsyncDisposable
     /// <summary>Whether to render <see cref="Title"/> in the toolbar.</summary>
     [Parameter] public bool ShowTitle { get; set; } = true;
 
-    /// <summary>The full markdown content (optionally including <c>---</c> YAML-style front matter).</summary>
-    [Parameter] public string Content { get; set; } = "";
+    /// <summary>
+    /// Full markdown used to create this editor session, optionally including <c>---</c> YAML-style
+    /// front matter. It is applied once when the component is created. Later host content changes
+    /// are deliberately ignored; call <see cref="LoadExternalContent"/> to explicitly replace the
+    /// live session (for example after the user chooses “Discard and reload”).
+    /// </summary>
+    [Parameter] public string InitialContent { get; set; } = "";
 
-    /// <summary>Invoked when the user saves edits. The argument is the full markdown including front matter.</summary>
-    [Parameter] public EventCallback<string> OnSave { get; set; }
+    /// <summary>
+    /// Invoked with an immutable save snapshot. Successful completion acknowledges that exact
+    /// revision; an exception rejects it and leaves the live editor buffer dirty.
+    /// </summary>
+    [Parameter] public EventCallback<WrappedToastSaveRequest> OnSaveRequested { get; set; }
 
     /// <summary>
     /// Enables automatic debounced saves while editing. Off by default; hosts (e.g. FilespaceView)
@@ -69,13 +77,6 @@ public partial class WrappedToast : IAsyncDisposable
 
     /// <summary>Current save lifecycle status (see <see cref="SaveStatus"/>).</summary>
     public SaveStatus SaveStatus => _saveStatus;
-
-    /// <summary>
-    /// True when the most recent save (in progress or just completed) was triggered by the manual
-    /// Save button rather than autosave/flush. Hosts read this to decide version-checkpoint policy
-    /// (manual saves create a distinct checkpoint; autosaves coalesce).
-    /// </summary>
-    public bool LastSaveWasManual { get; private set; } = true;
 
     /// <summary>Raised on <see cref="IsDirty"/> transitions only.</summary>
     [Parameter] public EventCallback<bool> OnDirtyChanged { get; set; }
@@ -115,12 +116,11 @@ public partial class WrappedToast : IAsyncDisposable
     private bool _isEditing;
     private bool _isSaving;
     private TextContentWithFrontMatter? _currentContent;
-    private bool _currentContent_updated;
+    private bool _externalContentPending;
     private bool _viewerRewritePending;
-    // The last Content actually applied to the editor. Null until the first apply, so
-    // an initially empty document still gets parsed. Guards against re-pushing (and
-    // thereby clobbering) the live buffer on every parent re-render.
-    private string? _lastAppliedContent;
+    private bool _initialContentApplied;
+    private long _sessionGeneration;
+    private long _revision;
 
     // Frontmatter editing state
     private bool _isEditingFrontMatter;
@@ -134,6 +134,9 @@ public partial class WrappedToast : IAsyncDisposable
     private TaskCompletionSource? _inFlightSave;
     private bool? _autosaveOverride; // null = use AutosaveEnabled; set by the toolbar toggle and persisted.
     private bool AutosaveEffective => _autosaveOverride ?? AutosaveEnabled;
+
+    /// <summary>Whether autosave is currently effective after applying the local toolbar choice.</summary>
+    public bool IsAutosaveEnabled => AutosaveEffective;
 
     /// <summary>Default options forwarded to <see cref="ToastUIEditorViewer"/>.</summary>
     public Dictionary<string, string> ViewerOptions { get; }
@@ -160,52 +163,53 @@ public partial class WrappedToast : IAsyncDisposable
 
     public bool IsEditing => _isEditing;
 
+    /// <summary>Monotonically increasing revision of this editor session.</summary>
+    public long Revision => _revision;
+
     protected override void OnParametersSet()
     {
         EditorOptions["initialEditType"] = string.IsNullOrWhiteSpace(InitialEditType)
             ? "wysiwyg"
             : InitialEditType;
 
-        // Only apply Content when it actually changed. Blazor calls OnParametersSet on
-        // every parent render, and applying re-pushes the text into the editor — which
-        // would discard whatever the user has typed since the load.
-        if (!string.Equals(Content, _lastAppliedContent, StringComparison.Ordinal))
+        if (!_initialContentApplied)
         {
-            ApplyContent(Content);
+            _initialContentApplied = true;
+            ApplyExternalContent(InitialContent);
         }
     }
 
     /// <summary>
-    /// Replace the editor/viewer content programmatically. Re-applying the same string is
-    /// a no-op unless <paramref name="force"/> is set; force is how a consumer discards the
-    /// live buffer and restores canonical text that happens to be byte-identical to the
-    /// text originally loaded.
+    /// Explicitly discard the live session and load canonical content supplied by the host. This is
+    /// intentionally the only path that calls <c>setMarkdown</c> after initial render; ordinary
+    /// save acknowledgements do not replace the editor buffer, cursor, scroll position, or focus.
     /// </summary>
-    public void SetContent(string content, bool force = false)
+    public void LoadExternalContent(string content)
     {
-        if (force || !string.Equals(content, _lastAppliedContent, StringComparison.Ordinal))
-        {
-            ApplyContent(content);
-        }
-
+        ArgumentNullException.ThrowIfNull(content);
+        ApplyExternalContent(content);
         StateHasChanged();
     }
 
-    private void ApplyContent(string content)
+    private void ApplyExternalContent(string content)
     {
-        _lastAppliedContent = content;
-        _currentContent = TextContentWithFrontMatter.Parse(content);
-        _currentContent_updated = true;
+        _sessionGeneration++;
+        _revision++;
+        _currentContent = TextContentWithFrontMatter.Parse(content) ?? TextContentWithFrontMatter.Parse(string.Empty)!;
+        _isEditingFrontMatter = _isEditing && _currentContent.FrontMatterRows.Count > 0;
+        _externalContentPending = true;
         _viewerRewritePending = true;
+        SetDirty(false);
+        SetSaveStatus(SaveStatus.Idle);
     }
 
     /// <summary>
-    /// Mark the buffer dirty. Consumers call this when a save they were asked to perform
-    /// was rejected, so the indicator and any unsaved-changes guards keep reflecting the
-    /// retained buffer.
+    /// Record a user or host-initiated edit to the live editor session. A save snapshots this
+    /// revision; if another edit occurs before acknowledgement, the newer buffer remains dirty.
     /// </summary>
-    public void MarkDirty()
+    protected void RecordEdit()
     {
+        _revision++;
         SetDirty(true);
         if (_isEditing && AutosaveEffective)
         {
@@ -271,14 +275,20 @@ public partial class WrappedToast : IAsyncDisposable
     /// </summary>
     protected virtual Task<string> ReadLiveBodyAsync() => _editor.GetMarkdownAsync();
 
-    /// <summary>Get the full live content including frontmatter.</summary>
+    /// <summary>Get the full live content including frontmatter without changing session state.</summary>
     public async Task<string> GetLiveFullContentAsync()
     {
         var body = await GetLiveContentAsync();
-        if (_currentContent == null) return body;
-        // Snapshot the live body so ToMarkdownWithFrontMatter is accurate
-        _currentContent.Body = body;
-        return _currentContent.ToMarkdownWithFrontMatter();
+        return CreateContentSnapshot(body).ToMarkdownWithFrontMatter();
+    }
+
+    private TextContentWithFrontMatter CreateContentSnapshot(string body)
+    {
+        ArgumentNullException.ThrowIfNull(_currentContent);
+        var rows = _isEditingFrontMatter && _currentContent.FrontMatterRows.Count > 0
+            ? _frontMatterPanel.GetEditedRows()
+            : _currentContent.FrontMatterRows;
+        return TextContentWithFrontMatter.FromParts(rows, body);
     }
 
     // ── Editor manipulation (edit mode required) ───────────────────────
@@ -313,7 +323,7 @@ public partial class WrappedToast : IAsyncDisposable
         // Place cursor at start, then insert
         await _editor.SetSelectionAsync(start, start);
         await _editor.InsertTextAsync(text);
-        SetDirty(true);
+        RecordEdit();
     }
 
     /// <summary>
@@ -325,7 +335,7 @@ public partial class WrappedToast : IAsyncDisposable
         ThrowIfNotEditing();
         await EnsureMarkdownModeAsync();
         await _editor.ReplaceSelectionAsync(text, start, end);
-        SetDirty(true);
+        RecordEdit();
     }
 
     /// <summary>
@@ -366,7 +376,7 @@ public partial class WrappedToast : IAsyncDisposable
 
         var updated = content.Replace(find, replace, StringComparison.Ordinal);
         await _editor.SetMarkdownAsync(updated);
-        SetDirty(true);
+        RecordEdit();
         return count;
     }
 
@@ -386,7 +396,7 @@ public partial class WrappedToast : IAsyncDisposable
 
         var updated = string.Concat(content.AsSpan(0, idx), replace, content.AsSpan(idx + find.Length));
         await _editor.SetMarkdownAsync(updated);
-        SetDirty(true);
+        RecordEdit();
         return true;
     }
 
@@ -400,7 +410,7 @@ public partial class WrappedToast : IAsyncDisposable
 
         var content = await _editor.GetMarkdownAsync();
         await _editor.SetMarkdownAsync(content + text);
-        SetDirty(true);
+        RecordEdit();
     }
 
     private static int CountOccurrences(string haystack, string needle)
@@ -425,9 +435,10 @@ public partial class WrappedToast : IAsyncDisposable
             await ReadAutosavePreferenceAsync();
         }
 
-        if (_currentContent_updated)
+        if (_externalContentPending)
         {
-            // A load is not an edit: suspend change reporting around the push, then clear.
+            // Only an explicit initial/external load reaches this path. A normal save merely
+            // acknowledges a revision and must not reconstruct the native editor document.
             await _editor.SetChangeSuspendedAsync(true);
             try
             {
@@ -442,8 +453,7 @@ public partial class WrappedToast : IAsyncDisposable
                 await _editor.SetChangeSuspendedAsync(false);
             }
 
-            SetDirty(false);
-            _currentContent_updated = false;
+            _externalContentPending = false;
             _viewerRewritePending = true;
         }
 
@@ -484,6 +494,7 @@ public partial class WrappedToast : IAsyncDisposable
         // Leaving edit mode discards the buffer (Cancel) or follows a save; either way
         // there is nothing unsaved to guard.
         SetDirty(false);
+        SetSaveStatus(SaveStatus.Idle);
         CancelAutosaveTimers();
         // Sync the viewer with the last persisted/loaded content before showing it. Save no
         // longer pushes content (see ExecuteSaveAsync), so the viewer is refreshed here.
@@ -494,108 +505,190 @@ public partial class WrappedToast : IAsyncDisposable
         ExitFrontMatterEditMode();
     }
 
-    private Task SaveAsync() => SaveAsyncInternal(exitFrontMatterEdit: true, isManual: true);
+    private async Task SaveAsync()
+        => await SaveAsyncInternal(WrappedToastSaveOrigin.Manual);
 
     /// <summary>
-    /// Flush any pending/in-flight automatic save and persist the current buffer if dirty.
-    /// Used by hosts before file switch, navigation, and agent execution. Never throws on
-    /// save failure or stale rejection — the status reflects the outcome and the caller
-    /// decides the fallback.
+    /// Flush any pending/in-flight save and persist the current buffer if dirty. Returns true only
+    /// when the live buffer is durable; a rejection, failure, or newer edit returns false.
+    /// Cancellation still propagates to the caller.
     /// </summary>
-    public async Task FlushAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> FlushAsync(CancellationToken cancellationToken = default)
     {
         CancelAutosaveTimers();
 
         var inflight = _inFlightSave;
         if (inflight is not null)
         {
-            try { await inflight.Task.WaitAsync(cancellationToken); }
-            catch (OperationCanceledException) { }
+            await inflight.Task.WaitAsync(cancellationToken);
         }
 
-        if (IsDirty && _isEditing)
+        if (!IsDirty || !_isEditing)
         {
-            await SaveAsyncInternal(exitFrontMatterEdit: false, isManual: false, cancellationToken);
+            return true;
         }
+
+        return await SaveAsyncInternal(WrappedToastSaveOrigin.Flush, cancellationToken)
+            && !IsDirty;
     }
 
-    private async Task SaveAsyncInternal(bool exitFrontMatterEdit, bool isManual, CancellationToken cancellationToken = default)
+    private async Task<bool> SaveAsyncInternal(
+        WrappedToastSaveOrigin origin,
+        CancellationToken cancellationToken = default)
     {
         if (_currentContent == null)
         {
-            throw new InvalidOperationException("No content to save");
+            throw new InvalidOperationException("No content to save.");
         }
 
-        LastSaveWasManual = isManual;
-        if (isManual)
+        var sessionGeneration = _sessionGeneration;
+        if (origin is WrappedToastSaveOrigin.Manual)
         {
             _isSaving = true;
         }
+
         try
         {
-            await ExecuteSaveAsync(exitFrontMatterEdit, cancellationToken);
+            return await ExecuteSaveAsync(origin, cancellationToken);
         }
         finally
         {
-            if (isManual)
+            if (origin is WrappedToastSaveOrigin.Manual)
             {
                 _isSaving = false;
+                if (_isEditing && sessionGeneration == _sessionGeneration)
+                {
+                    await RestoreManualSaveFocusAsync();
+                }
             }
+
             StateHasChanged();
         }
     }
 
     /// <summary>
-    /// The single serialized persistence path shared by manual Save, autosave, and flush.
-    /// Acquires the save gate so only one save runs at a time; snapshots the live buffer at
-    /// run time (so an earlier save can never overwrite a newer buffer); clears dirty on
-    /// success; keeps the buffer + edit mode on failure.
+    /// The single serialized persistence path shared by manual Save, autosave, and flush. It
+    /// snapshots immutable content and its revision after acquiring the gate. Acknowledging an old
+    /// snapshot never clears dirty state for a newer edit.
     /// </summary>
-    private async Task ExecuteSaveAsync(bool exitFrontMatterEdit, CancellationToken cancellationToken)
+    private async Task<bool> ExecuteSaveAsync(
+        WrappedToastSaveOrigin origin,
+        CancellationToken cancellationToken)
     {
         await _saveGate.WaitAsync(cancellationToken);
-        ArgumentNullException.ThrowIfNull(_currentContent);
         var inflight = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _inFlightSave = inflight;
+        var sessionGeneration = _sessionGeneration;
+        WrappedToastSaveRequest? request = null;
         try
         {
-            SetSaveStatus(SaveStatus.Saving);
-
-            _currentContent.Body = await GetLiveContentAsync();
-            if (_isEditingFrontMatter)
+            if (!IsDirty || !_isEditing)
             {
-                var editedRows = _frontMatterPanel.GetEditedRows();
-                _currentContent = TextContentWithFrontMatter.FromParts(editedRows, _currentContent.Body);
-                if (exitFrontMatterEdit)
-                {
-                    ExitFrontMatterEditMode();
-                }
+                return true;
             }
 
-            await OnSave.InvokeAsync(_currentContent.ToMarkdownWithFrontMatter());
-            SetDirty(false);
-            SetSaveStatus(SaveStatus.Saved);
-            // Stay in edit mode after a successful save (manual or automatic): saving must
-            // not end editing. The user leaves the editor explicitly via Cancel. Save does NOT
-            // re-push the editor/viewer: that moved the cursor to the end and added latency. The
-            // viewer is synced on the way out of edit mode (ExitEditModeAsync).
+            SetSaveStatus(SaveStatus.Saving);
+            var body = await GetLiveContentAsync();
+            if (sessionGeneration != _sessionGeneration || !_isEditing)
+            {
+                return true;
+            }
+
+            var snapshot = CreateContentSnapshot(body);
+            request = new WrappedToastSaveRequest(
+                snapshot.ToMarkdownWithFrontMatter(),
+                _revision,
+                origin);
+
+            Logger.LogDebug(
+                "Saving editor revision {Revision} ({Origin}, {ContentLength} characters).",
+                request.Revision,
+                request.Origin,
+                request.Content.Length);
+
+            await OnSaveRequested.InvokeAsync(request);
+            if (sessionGeneration != _sessionGeneration || !_isEditing)
+            {
+                return true;
+            }
+
+            // Keep the last durable document for Cancel/view mode, but only clear dirty state
+            // when no edit arrived after this exact snapshot.
+            _currentContent = snapshot;
+            if (_revision == request.Revision)
+            {
+                SetDirty(false);
+                SetSaveStatus(SaveStatus.Saved);
+                Logger.LogDebug(
+                    "Saved editor revision {Revision} ({Origin}).",
+                    request.Revision,
+                    request.Origin);
+            }
+            else if (IsDirty && AutosaveEffective)
+            {
+                SetSaveStatus(SaveStatus.Pending);
+                ArmAutosave();
+                Logger.LogDebug(
+                    "Saved editor revision {SavedRevision}, but revision {CurrentRevision} remains dirty.",
+                    request.Revision,
+                    _revision);
+            }
+            else
+            {
+                SetSaveStatus(SaveStatus.Idle);
+            }
+
+            return true;
         }
         catch (OperationCanceledException)
         {
-            SetSaveStatus(SaveStatus.Failed);
+            if (sessionGeneration == _sessionGeneration)
+            {
+                SetSaveStatus(SaveStatus.Failed);
+            }
+
             throw;
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Save failed; retaining the unsaved editor buffer.");
-            Snackbar.Add("Couldn't save. Your edits are still available.", Severity.Error);
-            SetSaveStatus(SaveStatus.Failed);
+            Logger.LogWarning(
+                ex,
+                "Save of editor revision {Revision} ({Origin}) failed; retaining the live buffer.",
+                request?.Revision ?? _revision,
+                origin);
+            if (sessionGeneration == _sessionGeneration)
+            {
+                Snackbar.Add("Couldn't save. Your edits are still available.", Severity.Error);
+                SetSaveStatus(SaveStatus.Failed);
+            }
+
+            return false;
         }
         finally
         {
-            _saveGate.Release();
-            _inFlightSave = null;
+            if (ReferenceEquals(_inFlightSave, inflight))
+            {
+                _inFlightSave = null;
+            }
+
             inflight.TrySetResult();
+            _saveGate.Release();
+        }
+    }
+
+    private async Task RestoreManualSaveFocusAsync()
+    {
+        try
+        {
+            await _editor.FocusAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The component is being removed; there is no editor left to focus.
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not restore editor focus after a manual save.");
         }
     }
 
@@ -659,7 +752,7 @@ public partial class WrappedToast : IAsyncDisposable
                 }
 
                 CancelAutosaveTimers();
-                await SaveAsyncInternal(exitFrontMatterEdit: false, isManual: false);
+                await SaveAsyncInternal(WrappedToastSaveOrigin.Autosave);
             });
         }
         catch (Exception ex)
@@ -816,7 +909,7 @@ public partial class WrappedToast : IAsyncDisposable
         _isEditingFrontMatter = true;
         // FrontMatterPanel clones rows internally when IsEditing becomes true.
         // Entering front-matter edit mode is not itself an edit; the panel reports actual
-        // row changes through OnEdited (wired to SetDirty in the markup).
+        // row changes through OnEdited (wired to RecordEdit in the markup).
     }
 
     private void ExitFrontMatterEditMode()
@@ -834,16 +927,14 @@ public partial class WrappedToast : IAsyncDisposable
         _autosaveDebounceTimer = null;
         _autosaveMaxWaitTimer = null;
 
-        // Best-effort flush: an abrupt tab/page close cannot reliably complete async work,
-        // but if the component is disposed while still mounted (e.g. in-app navigation) we
-        // try once. Fire-and-forget; never throw from dispose.
-        if (IsDirty && _isEditing && _currentContent != null)
+        // Disposal is not a reliable persistence boundary. Hosts must call FlushAsync before
+        // navigation; an unmount with a dirty editor is reported rather than silently starting a
+        // background write against a component that is already going away.
+        if (IsDirty && _isEditing)
         {
-            _ = Task.Run(async () =>
-            {
-                try { await SaveAsyncInternal(exitFrontMatterEdit: false, isManual: false); }
-                catch { /* best-effort */ }
-            });
+            Logger.LogWarning(
+                "Discarding a dirty editor session during disposal at revision {Revision}; no background save is attempted.",
+                _revision);
         }
 
         // Drop the browser unload guard before releasing the JS wrapper, or an unmount

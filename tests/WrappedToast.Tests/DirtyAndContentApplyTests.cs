@@ -7,10 +7,9 @@ using System.Reflection;
 namespace WrappedToast.Tests;
 
 /// <summary>
-/// Pins the content-apply guard (a parent re-render must not re-push text into the live
-/// editor buffer) and the dirty flag's transitions. JS is stubbed by bUnit's loose mode,
-/// so these cover the C#-side rules only — the editor change listener and the browser
-/// unload guard are JS-side and verified manually.
+/// Product tests for editor-session ownership. Host parameter echoes must not replace a live
+/// buffer; only an explicit external load may do that. Save acknowledgements must not mark a newer
+/// revision clean.
 /// </summary>
 public class DirtyAndContentApplyTests : IAsyncDisposable
 {
@@ -25,135 +24,132 @@ public class DirtyAndContentApplyTests : IAsyncDisposable
 
     public async ValueTask DisposeAsync() => await _ctx.DisposeAsync();
 
-    private static object? CurrentContent(WrappedToast component)
-        => typeof(WrappedToast)
-            .GetField("_currentContent", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .GetValue(component);
+    private static readonly MethodInfo EnterEditMode =
+        typeof(WrappedToast).GetMethod("EnterEditMode", BindingFlags.NonPublic | BindingFlags.Instance)!;
 
-    private static Task SetContentParameterAsync(IRenderedComponent<WrappedToast> cut, string content)
+    private static readonly MethodInfo SaveAsync =
+        typeof(WrappedToast).GetMethod("SaveAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private static Task EnterEditingAsync(IRenderedComponent<TestableWrappedToast> cut)
+        => cut.InvokeAsync(() => (Task)EnterEditMode.Invoke(cut.Instance, null)!);
+
+    private static Task TriggerManualSaveAsync(IRenderedComponent<TestableWrappedToast> cut)
+        => cut.InvokeAsync(() => (Task)SaveAsync.Invoke(cut.Instance, null)!);
+
+    private static Task SetInitialContentParameterAsync(
+        IRenderedComponent<TestableWrappedToast> cut,
+        string content)
         => cut.InvokeAsync(() => cut.Instance.SetParametersAsync(
-            ParameterView.FromDictionary(new Dictionary<string, object?> { ["Content"] = content })));
+            ParameterView.FromDictionary(new Dictionary<string, object?> { ["InitialContent"] = content })));
 
     [Fact]
-    public void EmptyContent_IsStillParsed()
+    public async Task Initial_Empty_Content_Creates_A_Usable_Session()
     {
-        // Regression: the apply guard must not mistake the initial empty Content for
-        // "already applied", or _currentContent stays null and SaveAsync throws.
-        var cut = _ctx.Render<WrappedToast>(p => p.Add(c => c.Content, ""));
+        var cut = _ctx.Render<TestableWrappedToast>(p => p.Add(c => c.InitialContent, ""));
 
-        Assert.NotNull(CurrentContent(cut.Instance));
+        Assert.Equal(string.Empty, await cut.Instance.GetLiveFullContentAsync());
     }
 
     [Fact]
-    public async Task Parameter_Set_With_Unchanged_Content_Does_Not_Reapply()
+    public async Task Later_InitialContent_Parameter_Change_Does_Not_Replace_The_Session()
     {
-        var cut = _ctx.Render<WrappedToast>(p => p.Add(c => c.Content, "# hello"));
-        var before = CurrentContent(cut.Instance);
+        var cut = _ctx.Render<TestableWrappedToast>(p => p.Add(c => c.InitialContent, "# loaded"));
 
-        await SetContentParameterAsync(cut, "# hello");
+        await SetInitialContentParameterAsync(cut, "# host echo");
 
-        Assert.Same(before, CurrentContent(cut.Instance));
+        Assert.Equal("# loaded", await cut.Instance.GetLiveFullContentAsync());
     }
 
     [Fact]
-    public async Task Parameter_Set_With_Changed_Content_Reapplies()
+    public async Task Explicit_External_Load_Replaces_The_Session_And_Clears_Dirty_State()
     {
-        var cut = _ctx.Render<WrappedToast>(p => p.Add(c => c.Content, "# hello"));
-        var before = CurrentContent(cut.Instance);
+        var cut = _ctx.Render<TestableWrappedToast>(p => p.Add(c => c.InitialContent, "# loaded"));
+        await EnterEditingAsync(cut);
+        cut.Instance.LiveBody = "# local edit";
+        await cut.InvokeAsync(cut.Instance.SimulateUserEdit);
+        var editedRevision = cut.Instance.Revision;
 
-        await SetContentParameterAsync(cut, "# changed");
-
-        Assert.NotSame(before, CurrentContent(cut.Instance));
-    }
-
-    [Fact]
-    public async Task SetContent_Force_Reapplies_Identical_Content()
-    {
-        // "Reload / discard my edits" must work even when canonical text is identical
-        // to what was originally loaded.
-        var cut = _ctx.Render<WrappedToast>(p => p.Add(c => c.Content, "# hello"));
-        var before = CurrentContent(cut.Instance);
-
-        await cut.InvokeAsync(() => cut.Instance.SetContent("# hello"));
-        Assert.Same(before, CurrentContent(cut.Instance));
-
-        await cut.InvokeAsync(() => cut.Instance.SetContent("# hello", force: true));
-        Assert.NotSame(before, CurrentContent(cut.Instance));
-    }
-
-    [Fact]
-    public async Task MarkDirty_Sets_IsDirty_And_Raises_One_Transition()
-    {
-        var transitions = new List<bool>();
-        var cut = _ctx.Render<WrappedToast>(p => p
-            .Add(c => c.Content, "# hello")
-            .Add(c => c.OnDirtyChanged, b => transitions.Add(b)));
-
-        await cut.InvokeAsync(() => cut.Instance.MarkDirty());
-        await cut.InvokeAsync(() => cut.Instance.MarkDirty());
-
-        Assert.True(cut.Instance.IsDirty);
-        Assert.Equal([true], transitions);
-    }
-
-    [Fact]
-    public async Task Content_Load_Clears_Dirty()
-    {
-        var cut = _ctx.Render<WrappedToast>(p => p.Add(c => c.Content, "# hello"));
-        await cut.InvokeAsync(() => cut.Instance.MarkDirty());
-        Assert.True(cut.Instance.IsDirty);
-
-        await SetContentParameterAsync(cut, "# reloaded");
+        await cut.InvokeAsync(() => cut.Instance.LoadExternalContent("# canonical reload"));
 
         Assert.False(cut.Instance.IsDirty);
+        Assert.True(cut.Instance.Revision > editedRevision);
     }
 
     [Fact]
     public async Task Failed_Save_Preserves_Dirty_State_And_Edit_Mode()
     {
-        var cut = _ctx.Render<WrappedToast>(p => p
-            .Add(c => c.Content, "# hello")
-            .Add(c => c.OnSave, EventCallback.Factory.Create<string>(this, _ => throw new InvalidOperationException("save failed"))));
-        var enterEditMode = typeof(WrappedToast).GetMethod("EnterEditMode", BindingFlags.NonPublic | BindingFlags.Instance)!;
-        var saveAsync = typeof(WrappedToast).GetMethod("SaveAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var cut = _ctx.Render<TestableWrappedToast>(p => p
+            .Add(c => c.InitialContent, "# hello")
+            .Add(c => c.OnSaveRequested, EventCallback.Factory.Create<WrappedToastSaveRequest>(
+                this,
+                _ => throw new InvalidOperationException("save failed"))));
+        await EnterEditingAsync(cut);
+        cut.Instance.LiveBody = "# dirty";
+        await cut.InvokeAsync(cut.Instance.SimulateUserEdit);
 
-        await cut.InvokeAsync(() => (Task)enterEditMode.Invoke(cut.Instance, null)!);
-        await cut.InvokeAsync(() => cut.Instance.MarkDirty());
-        await cut.InvokeAsync(() => (Task)saveAsync.Invoke(cut.Instance, null)!);
+        await TriggerManualSaveAsync(cut);
 
+        Assert.Equal(SaveStatus.Failed, cut.Instance.SaveStatus);
         Assert.True(cut.Instance.IsDirty);
         Assert.True(cut.Instance.IsEditing);
     }
 
     [Fact]
-    public async Task Successful_Save_Keeps_Edit_Mode_Open()
+    public async Task Successful_Manual_Save_Stays_In_Edit_Mode_And_Uses_An_Explicit_Request()
     {
-        // Contract: a successful save (manual today, automatic once autosave lands) must
-        // NOT leave edit mode. Saving persists and clears dirty, but the user stays in the
-        // editor. Pins the regression where SaveAsync called ExitEditMode() on success.
-        // Uses a testable subclass so the buffer read does not depend on JS interop.
-        var savedContent = new List<string>();
+        var saved = new List<WrappedToastSaveRequest>();
         var cut = _ctx.Render<TestableWrappedToast>(p => p
-            .Add(c => c.Content, "# hello")
-            .Add(c => c.OnSave, EventCallback.Factory.Create<string>(this, content =>
+            .Add(c => c.InitialContent, "# hello")
+            .Add(c => c.OnSaveRequested, EventCallback.Factory.Create<WrappedToastSaveRequest>(this, request =>
             {
-                savedContent.Add(content);
+                saved.Add(request);
                 return Task.CompletedTask;
             })));
         cut.Instance.LiveBody = "# hello (edited)";
-        var enterEditMode = typeof(WrappedToast).GetMethod("EnterEditMode", BindingFlags.NonPublic | BindingFlags.Instance)!;
-        var saveAsync = typeof(WrappedToast).GetMethod("SaveAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        await EnterEditingAsync(cut);
+        await cut.InvokeAsync(cut.Instance.SimulateUserEdit);
 
-        await cut.InvokeAsync(() => (Task)enterEditMode.Invoke(cut.Instance, null)!);
-        await cut.InvokeAsync(() => cut.Instance.MarkDirty());
-        Assert.True(cut.Instance.IsEditing);
-        Assert.True(cut.Instance.IsDirty);
-
-        await cut.InvokeAsync(() => (Task)saveAsync.Invoke(cut.Instance, null)!);
+        await TriggerManualSaveAsync(cut);
 
         Assert.True(cut.Instance.IsEditing);
         Assert.False(cut.Instance.IsDirty);
-        Assert.Single(savedContent);
-        Assert.Contains("# hello (edited)", savedContent[0]);
+        var request = Assert.Single(saved);
+        Assert.Contains("# hello (edited)", request.Content);
+        Assert.Equal(WrappedToastSaveOrigin.Manual, request.Origin);
+        Assert.Equal(cut.Instance.Revision, request.Revision);
+    }
+
+    [Fact]
+    public async Task Save_Acknowledging_An_Older_Revision_Leaves_A_Newer_Edit_Dirty()
+    {
+        var saved = new List<WrappedToastSaveRequest>();
+        var saveStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allowSaveToFinish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cut = _ctx.Render<TestableWrappedToast>(p => p
+            .Add(c => c.InitialContent, "# hello")
+            .Add(c => c.OnSaveRequested, EventCallback.Factory.Create<WrappedToastSaveRequest>(this, async request =>
+            {
+                saved.Add(request);
+                saveStarted.TrySetResult();
+                await allowSaveToFinish.Task;
+            })));
+        await EnterEditingAsync(cut);
+        cut.Instance.LiveBody = "# first";
+        await cut.InvokeAsync(cut.Instance.SimulateUserEdit);
+
+        var firstFlush = cut.InvokeAsync(() => cut.Instance.FlushAsync());
+        await saveStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        cut.Instance.LiveBody = "# newer";
+        await cut.InvokeAsync(cut.Instance.SimulateUserEdit);
+        allowSaveToFinish.TrySetResult();
+        Assert.False(await firstFlush);
+
+        Assert.True(cut.Instance.IsDirty);
+        Assert.Equal("# first", Assert.Single(saved).Content);
+
+        Assert.True(await cut.InvokeAsync(() => cut.Instance.FlushAsync()));
+        Assert.False(cut.Instance.IsDirty);
+        Assert.Equal(["# first", "# newer"], saved.Select(request => request.Content));
     }
 }

@@ -55,6 +55,12 @@ public partial class WrappedToast : IAsyncDisposable
     [Parameter] public EventCallback<SaveStatus> OnSaveStatusChanged { get; set; }
 
     /// <summary>
+    /// Shows a per-editor autosave on/off toggle in the toolbar. The host opts in; the choice is
+    /// persisted to localStorage and overrides <see cref="AutosaveEnabled"/> for that editor.
+    /// </summary>
+    [Parameter] public bool ShowAutosaveToggle { get; set; }
+
+    /// <summary>
     /// True when the live buffer holds changes that have not been saved. Sticky: set on
     /// the first change after a load, cleared on save, on Cancel, and on content load.
     /// Undoing back to the saved text does not clear it.
@@ -119,6 +125,8 @@ public partial class WrappedToast : IAsyncDisposable
     private Timer? _autosaveMaxWaitTimer;
     private DateTime _autosaveDirtySinceUtc = DateTime.MinValue;
     private TaskCompletionSource? _inFlightSave;
+    private bool? _autosaveOverride; // null = use AutosaveEnabled; set by the toolbar toggle and persisted.
+    private bool AutosaveEffective => _autosaveOverride ?? AutosaveEnabled;
 
     /// <summary>Default options forwarded to <see cref="ToastUIEditorViewer"/>.</summary>
     public Dictionary<string, string> ViewerOptions { get; }
@@ -192,7 +200,7 @@ public partial class WrappedToast : IAsyncDisposable
     public void MarkDirty()
     {
         SetDirty(true);
-        if (_isEditing && AutosaveEnabled)
+        if (_isEditing && AutosaveEffective)
         {
             ArmAutosave();
         }
@@ -407,6 +415,7 @@ public partial class WrappedToast : IAsyncDisposable
         {
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WrappedToast/WrappedToast.razor.js");
             _wrapper = await _module.InvokeAsync<IJSObjectReference>("create");
+            await ReadAutosavePreferenceAsync();
         }
 
         if (_currentContent_updated)
@@ -462,14 +471,19 @@ public partial class WrappedToast : IAsyncDisposable
         }
     }
 
-    private void ExitEditMode()
+    private async Task ExitEditModeAsync()
     {
         _isEditing = false;
         // Leaving edit mode discards the buffer (Cancel) or follows a save; either way
         // there is nothing unsaved to guard.
         SetDirty(false);
-        _=_editor.SetElementStyleAsync("display", "none");
-        _=_viewer.SetElementStyleAsync("display", "block");
+        CancelAutosaveTimers();
+        // Sync the viewer with the last persisted/loaded content before showing it. Save no
+        // longer pushes content (see ExecuteSaveAsync), so the viewer is refreshed here.
+        await _viewer.SetMarkdownAsync(_currentContent?.Body ?? string.Empty);
+        _viewerRewritePending = true;
+        await _editor.SetElementStyleAsync("display", "none");
+        await _viewer.SetElementStyleAsync("display", "block");
         ExitFrontMatterEditMode();
     }
 
@@ -552,11 +566,11 @@ public partial class WrappedToast : IAsyncDisposable
 
             await OnSave.InvokeAsync(_currentContent.ToMarkdownWithFrontMatter());
             SetDirty(false);
-            _currentContent_updated = true;
-            _viewerRewritePending = true;
             SetSaveStatus(SaveStatus.Saved);
             // Stay in edit mode after a successful save (manual or automatic): saving must
-            // not end editing. The user leaves the editor explicitly via Cancel.
+            // not end editing. The user leaves the editor explicitly via Cancel. Save does NOT
+            // re-push the editor/viewer: that moved the cursor to the end and added latency. The
+            // viewer is synced on the way out of edit mode (ExitEditModeAsync).
         }
         catch (OperationCanceledException)
         {
@@ -631,7 +645,7 @@ public partial class WrappedToast : IAsyncDisposable
         {
             await InvokeAsync(async () =>
             {
-                if (!_isEditing || !IsDirty || !AutosaveEnabled)
+                if (!_isEditing || !IsDirty || !AutosaveEffective)
                 {
                     return;
                 }
@@ -656,6 +670,54 @@ public partial class WrappedToast : IAsyncDisposable
         _saveStatus = status;
         StateHasChanged();
         _ = OnSaveStatusChanged.InvokeAsync(status);
+    }
+
+    private const string AutosaveStorageKey = "wrappedToast.autosave";
+
+    private async Task ReadAutosavePreferenceAsync()
+    {
+        if (_wrapper is null) return;
+        try
+        {
+            var stored = await _wrapper.InvokeAsync<string>("getLocal", AutosaveStorageKey);
+            if (bool.TryParse(stored, out var enabled))
+            {
+                _autosaveOverride = enabled;
+                if (IsDirty && _isEditing && AutosaveEffective) ArmAutosave();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not read autosave preference from localStorage.");
+        }
+    }
+
+    private async Task ToggleAutosaveAsync()
+    {
+        _autosaveOverride = !AutosaveEffective;
+        try
+        {
+            if (_wrapper is not null)
+            {
+                await _wrapper.InvokeVoidAsync("setLocal", AutosaveStorageKey, _autosaveOverride.Value ? "true" : "false");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not persist autosave preference.");
+        }
+
+        if (!AutosaveEffective)
+        {
+            CancelAutosaveTimers();
+        }
+        else if (IsDirty && _isEditing)
+        {
+            ArmAutosave();
+        }
+
+        StateHasChanged();
     }
 
     private static string SaveStatusText(SaveStatus status) => status switch

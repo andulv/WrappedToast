@@ -42,6 +42,15 @@
 
                 @if (_isEditing)
                 {
+                    @if (ShowAutosaveToggle)
+                    {
+                        <MudTooltip Text="@(AutosaveEffective ? "Autosave on (click to turn off)" : "Autosave off (click to turn on)")">
+                            <MudIconButton Icon="@Icons.Material.Filled.Autorenew"
+                                           Color="@(AutosaveEffective ? Color.Primary : Color.Default)"
+                                           Size="Size.Small" Variant="Variant.Text"
+                                           OnClick="ToggleAutosaveAsync" Disabled="_isSaving" />
+                        </MudTooltip>
+                    }
                     <MudButton Variant="Variant.Filled"
                                Color="@(IsDirty ? Color.Warning : Color.Primary)"
                                Size="Size.Small"
@@ -49,7 +58,7 @@
                         @(IsDirty ? "Save *" : "Save")
                     </MudButton>
                     <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.Cancel" OnClick="ExitEditMode" Disabled="_isSaving">
+                               StartIcon="@Icons.Material.Filled.Cancel" OnClick="ExitEditModeAsync" Disabled="_isSaving">
                         Cancel
                     </MudButton>
                     @if (_saveStatus != SaveStatus.Idle)

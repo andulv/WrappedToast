@@ -279,6 +279,10 @@ export function create() {
             win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + (title || 'WrappedToast') + '</title>' + toastuiStyles + '</head><body>' + html + '</body></html>');
             win.document.close();
             win.print();
-        }
+        },
+
+        // localStorage passthrough for per-editor preferences (e.g. the autosave toggle).
+        getLocal: (key) => localStorage.getItem(key),
+        setLocal: (key, value) => localStorage.setItem(key, value)
     };
 }

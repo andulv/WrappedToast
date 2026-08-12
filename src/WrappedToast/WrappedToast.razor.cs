@@ -794,9 +794,9 @@ public partial class WrappedToast : IAsyncDisposable
         }
     }
 
-    private async Task ToggleAutosaveAsync()
+    private async Task SetAutosaveEnabledAsync(bool enabled)
     {
-        _autosaveOverride = !AutosaveEffective;
+        _autosaveOverride = enabled;
         try
         {
             if (_wrapper is not null)

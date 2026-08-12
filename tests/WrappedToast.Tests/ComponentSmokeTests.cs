@@ -47,6 +47,9 @@ public class ComponentSmokeTests : IAsyncDisposable
         Assert.Contains("display:block;width:100%;", cut.Find("div").GetAttribute("style"));
     }
 
+    private static readonly MethodInfo EnterEditMode =
+        typeof(WrappedToast).GetMethod("EnterEditMode", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
     [Fact]
     public void WrappedToast_Renders_Title_And_Edit_Button()
     {
@@ -56,6 +59,20 @@ public class ComponentSmokeTests : IAsyncDisposable
 
         Assert.Contains("hello.md", cut.Markup);
         Assert.Contains("Edit", cut.Markup);
+    }
+
+    [Fact]
+    public async Task WrappedToast_Renders_Labeled_Autosave_Switch_While_Editing()
+    {
+        var cut = _ctx.Render<WrappedToast>(p => p
+            .Add(c => c.InitialContent, "body")
+            .Add(c => c.ShowAutosaveToggle, true));
+
+        await cut.InvokeAsync(() => (Task)EnterEditMode.Invoke(cut.Instance, null)!);
+        cut.Render();
+
+        Assert.NotNull(cut.Find("input[type=\"checkbox\"]"));
+        Assert.Contains("Autosave", cut.Markup);
     }
 
     [Fact]

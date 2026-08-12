@@ -70,6 +70,13 @@ public partial class WrappedToast : IAsyncDisposable
     /// <summary>Current save lifecycle status (see <see cref="SaveStatus"/>).</summary>
     public SaveStatus SaveStatus => _saveStatus;
 
+    /// <summary>
+    /// True when the most recent save (in progress or just completed) was triggered by the manual
+    /// Save button rather than autosave/flush. Hosts read this to decide version-checkpoint policy
+    /// (manual saves create a distinct checkpoint; autosaves coalesce).
+    /// </summary>
+    public bool LastSaveWasManual { get; private set; } = true;
+
     /// <summary>Raised on <see cref="IsDirty"/> transitions only.</summary>
     [Parameter] public EventCallback<bool> OnDirtyChanged { get; set; }
 
@@ -519,6 +526,7 @@ public partial class WrappedToast : IAsyncDisposable
             throw new InvalidOperationException("No content to save");
         }
 
+        LastSaveWasManual = isManual;
         if (isManual)
         {
             _isSaving = true;
